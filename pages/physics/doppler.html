@@ -1,1 +1,109 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>도플러 효과 | 개념 실험실</title>
+<link rel="stylesheet" href="../../assets/css/style.css">
+</head>
+<body>
 
+<header class="site-header">
+  <div class="wrap nav">
+    <a class="brand" href="../../index.html">
+      <svg class="brand-mark" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">
+        <line x1="3" y1="24" x2="25" y2="24" stroke="#8ca0c4" stroke-width="1.4"/>
+        <line x1="4" y1="25" x2="4" y2="3" stroke="#8ca0c4" stroke-width="1.4"/>
+        <path d="M4 20 C10 6, 16 26, 24 8" fill="none" stroke="#5eead4" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      개념 실험실
+    </a>
+    <nav class="nav-links" id="navLinks">
+      <a href="../../index.html">홈</a>
+      <a href="../../math.html" >수학</a>
+      <a href="../../physics.html" aria-current="page">물리학</a>
+      <a href="https://github.com/" target="_blank" rel="noopener">GitHub 저장소</a>
+    </nav>
+    <button class="nav-toggle" aria-label="메뉴 열기" aria-expanded="false">☰</button>
+  </div>
+</header>
+
+<main>
+  <p class="wrap breadcrumb">
+    <a href="../../index.html">홈</a><span class="sep">/</span>
+    <a href="../../physics.html">물리학</a><span class="sep">/</span>
+    도플러 효과
+  </p>
+
+  <section class="wrap sim-header">
+    <p class="eyebrow physics">PHYSICS</p>
+    <h1>도플러 효과</h1>
+    <p class="desc">파원과 관측자의 상대 운동에 따라 파장과 진동수가 달라지는 모습을 시각화합니다.</p>
+    <div class="status-row">
+      <span class="badge badge-open">틀 준비됨</span>
+      <span class="badge">담당자: 미배정</span>
+    </div>
+  </section>
+
+  <section class="wrap sim-layout">
+    <div class="panel">
+      <p class="panel-label">시각화 영역 · #sim-stage</p>
+      <div class="stage-placeholder" id="sim-stage">
+        여기에 도플러 효과 시뮬레이션 캔버스/SVG가 들어갑니다
+      </div>
+    </div>
+
+    <div class="panel">
+      <p class="panel-label">컨트롤 패널 · #sim-controls</p>
+      <div id="sim-controls">
+        <div class="control-group">
+          <label>매개변수 1 (예시)</label>
+          <div class="control-fake-slider"></div>
+        </div>
+        <div class="control-group">
+          <label>매개변수 2 (예시)</label>
+          <div class="control-fake-slider"></div>
+        </div>
+        <div class="control-group">
+          <label>실행 제어</label>
+          <div class="control-fake-buttons">
+            <button class="btn-mini" type="button">재생</button>
+            <button class="btn-mini" type="button">일시정지</button>
+            <button class="btn-mini" type="button">초기화</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap notes-grid">
+    <div class="panel">
+      <h3>개념 설명 (자리)</h3>
+      <p>이 영역에 해당 개념에 대한 설명 텍스트를 작성합니다.</p>
+    </div>
+    <div class="panel">
+      <h3>관련 수식 (자리)</h3>
+      <div class="formula-placeholder">수식 · 공식이 들어갈 자리</div>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <a class="back-link" href="../../physics.html">&larr; 물리학 목록으로</a>
+  </div>
+
+  <section class="wrap">
+    <div class="dev-note">
+      담당자 안내: 시각화 로직은 <code>../../assets/js/pages/doppler.js</code>에 작성하고, 아래 스크립트 태그로 불러옵니다.
+      DOM 구조(<code>#sim-stage</code>, <code>#sim-controls</code>)는 다른 페이지와 통일되어 있으니 id는 유지해 주세요.
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">교과 개념 시각화 플랫폼 · 팀 프로젝트 틀 (HTML/CSS/JS, GitHub Pages)</div>
+</footer>
+
+<script src="../../assets/js/main.js"></script>
+<script src="../../assets/js/pages/doppler.js"></script>
+</body>
+</html>
