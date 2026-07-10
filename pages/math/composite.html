@@ -19,14 +19,19 @@
     gap: 6px;
     margin-bottom: 14px;
   }
-  .control-row select, .control-row input[type="range"] {
+  .control-row input[type="text"], .control-row input[type="range"] {
     width: 100%;
-    padding: 8px;
+    padding: 10px;
     background: var(--panel-raised);
     border: 1px solid var(--border);
     border-radius: 6px;
     color: var(--ink);
-    font-family: var(--font-body);
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+  }
+  .control-row input[type="text"]:focus {
+    outline: 2px solid var(--accent-math);
+    border-color: transparent;
   }
   .control-row input[type="range"] {
     accent-color: var(--accent-math);
@@ -37,6 +42,19 @@
     font-size: 0.85rem;
     color: var(--accent-math);
     text-align: right;
+  }
+  .input-hint {
+    font-size: 0.75rem;
+    color: var(--ink-muted);
+    margin-top: -2px;
+    margin-bottom: 8px;
+  }
+  .error-message {
+    color: #ef4444;
+    font-size: 0.75rem;
+    font-family: var(--font-body);
+    display: none;
+    margin-top: -4px;
   }
 </style>
 </head>
@@ -100,26 +118,19 @@
         </div>
 
         <div class="control-group">
-          <label>속함수 $g(x)$ 선택</label>
+          <label>속함수 $g(x)$ 입력</label>
           <div class="control-row">
-            <select id="func-g">
-              <option value="sin">g(x) = sin(x)</option>
-              <option value="linear">g(x) = 0.5x + 0.3</option>
-              <option value="quad">g(x) = 0.5x² - 0.5</option>
-              <option value="cubic">g(x) = 0.3x³ - 0.2x</option>
-            </select>
+            <input type="text" id="input-g" value="sin(x)" placeholder="예: x^2 - 0.5, sin(x)">
+            <div class="input-hint">사용 가능 변수: x (sin, cos, tan, pi, pow, abs 등 사용 가능)</div>
+            <div id="error-g" class="error-message">올바르지 않은 수식입니다.</div>
           </div>
         </div>
 
         <div class="control-group">
-          <label>겉함수 $f(x)$ 선택</label>
+          <label>겉함수 $f(x)$ 입력</label>
           <div class="control-row">
-            <select id="func-f">
-              <option value="quad">f(x) = x² - 0.5</option>
-              <option value="linear">f(x) = 0.8x</option>
-              <option value="cos">f(x) = cos(x)</option>
-              <option value="cubic">f(x) = 0.5x³ - 0.5x</option>
-            </select>
+            <input type="text" id="input-f" value="x^2 - 0.5" placeholder="예: 0.8*x, cos(x)">
+            <div id="error-f" class="error-message">올바르지 않은 수식입니다.</div>
           </div>
         </div>
 
@@ -142,7 +153,7 @@
       <ul style="margin: 8px 0 0; padding-left: 20px; color: var(--ink-muted); font-size: 0.9rem;">
         <li><b>좌측 하단:</b> 속함수 $g(x)$의 평면입니다. $y$축이 오른쪽을 향하도록 시계방향 회전되어 있습니다.</li>
         <li><b>좌측 상단:</b> 겉함수 $f(x)$의 표준 평면입니다. 속함수의 결과값($y$축)이 그대로 겉함수의 입력값($x$축)으로 수직 연결됩니다.</li>
-        <li><b>우측 상단:</b> 최종 합성함수 $(f \circ g)(x)$의 평면입니다. 처음 입력한 $x$와 최종 결과 $f(g(x))$를 직접 매핑합니다.</li>
+        <li><b>우측 상단:</b> 최종 합성함수 $(f \circ g)(x)$의 평면입니다. 처음 입력한 원본 입력값 $x$에 대한 최종 변환 출력값 $f(g(x))$를 직접 매핑합니다.</li>
       </ul>
     </div>
     <div class="panel">
@@ -161,14 +172,6 @@
   </div>
 </main>
 
-<footer class="site-footer">
-  <div class="wrap">교과 개념 시각화 플랫폼 · 팀 프로젝트 틀 (HTML/CSS/JS, GitHub Pages)</div>
-</footer>
-
-<script src="../../assets/js/main.js"></script>
-<script src="../../assets/js/pages/composite.js"></script>
-</body>
-</html>
 <footer class="site-footer">
   <div class="wrap">교과 개념 시각화 플랫폼 · 팀 프로젝트 틀 (HTML/CSS/JS, GitHub Pages)</div>
 </footer>
