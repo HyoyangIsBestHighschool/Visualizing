@@ -5,6 +5,129 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>간섭과 회절 | 개념 실험실</title>
 <link rel="stylesheet" href="../../assets/css/style.css">
+<style>
+  /* ============================================================
+     이 시뮬레이션 전용 스타일입니다.
+     assets/css/style.css는 건드리지 않고, 이미 정의된 CSS 변수만
+     그대로 재사용합니다 (새 색상/폰트 값을 만들지 않았습니다).
+     ============================================================ */
+
+  .sim-tabs {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+  }
+
+  .sim-tab {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    padding: 8px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--ink-muted);
+    cursor: pointer;
+    transition: border-color 0.15s ease, color 0.15s ease;
+  }
+  .sim-tab:hover { color: var(--ink); }
+  .sim-tab.active {
+    color: var(--accent-physics);
+    border-color: var(--accent-physics);
+  }
+
+  .sim-scene { display: flex; justify-content: center; }
+
+  .sim-scene canvas {
+    width: 100%;
+    height: auto;
+    max-width: 640px;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    background: var(--panel-raised);
+    display: block;
+  }
+
+  .sim-scene-caption {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--ink-muted);
+    text-align: center;
+    margin-top: 8px;
+  }
+
+  .control-panel-group { display: none; }
+  .control-panel-group.active { display: block; }
+
+  .wave-config {
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px;
+    margin-bottom: 16px;
+  }
+  .wave-config h4 {
+    margin: 0 0 10px;
+    font-family: var(--font-display);
+    font-size: 0.95rem;
+    color: var(--ink);
+  }
+
+  .control-group label {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .control-value {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--accent-physics);
+  }
+
+  .wave-slider {
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 999px;
+    background: var(--border);
+    outline: none;
+    margin-top: 4px;
+  }
+  .wave-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent-physics);
+    cursor: pointer;
+  }
+  .wave-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent-physics);
+    border: none;
+    cursor: pointer;
+  }
+
+  .exec-block {
+    border-top: 1px dashed var(--border);
+    padding-top: 14px;
+    margin-top: 4px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .exec-block .control-fake-buttons { display: flex; gap: 8px; flex-wrap: wrap; }
+
+  .btn-mini.is-active-state { cursor: default; opacity: 0.7; }
+
+  .phase-toggle-btn.active {
+    color: var(--accent-physics);
+    border-color: var(--accent-physics);
+  }
+</style>
 </head>
 <body>
 
@@ -20,7 +143,7 @@
     </a>
     <nav class="nav-links" id="navLinks">
       <a href="../../index.html">홈</a>
-      <a href="../../math.html" >수학</a>
+      <a href="../../math.html">수학</a>
       <a href="../../physics.html" aria-current="page">물리학</a>
       <a href="https://github.com/" target="_blank" rel="noopener">GitHub 저장소</a>
     </nav>
@@ -48,42 +171,225 @@
   <section class="wrap sim-layout">
     <div class="panel">
       <p class="panel-label">시각화 영역 · #sim-stage</p>
-      <div class="stage-placeholder" id="sim-stage">
-        여기에 간섭과 회절 시뮬레이션 캔버스/SVG가 들어갑니다
+
+      <div class="sim-tabs" role="tablist">
+        <button type="button" class="sim-tab active" data-tab="interference" role="tab" aria-selected="true">간섭</button>
+        <button type="button" class="sim-tab" data-tab="diffraction" role="tab" aria-selected="false">회절</button>
+        <button type="button" class="sim-tab" data-tab="combined" role="tab" aria-selected="false">간섭 + 회절 동시</button>
+      </div>
+
+      <div id="sim-stage">
+        <div class="sim-scene" data-scene="interference">
+          <canvas id="interferenceCanvas" width="640" height="360" aria-label="두 파동의 간섭 애니메이션"></canvas>
+          <p class="sim-scene-caption">위: 파동 1 · 가운데: 파동 2 · 아래: 두 파동의 합성파(보강/상쇄)</p>
+        </div>
+        <div class="sim-scene" data-scene="diffraction" hidden>
+          <canvas id="diffractionCanvas" width="640" height="360" aria-label="단일 슬릿 회절 애니메이션"></canvas>
+          <p class="sim-scene-caption">평면파가 좁은 틈을 지나며 부채꼴로 퍼지는 회절 패턴</p>
+        </div>
+        <div class="sim-scene" data-scene="combined" hidden>
+          <canvas id="combinedCanvas" width="640" height="360" aria-label="이중 슬릿 간섭과 회절 동시 애니메이션"></canvas>
+          <p class="sim-scene-caption">두 개의 틈을 지난 파동이 서로 회절 + 간섭하는 모습</p>
+        </div>
       </div>
     </div>
 
     <div class="panel">
       <p class="panel-label">컨트롤 패널 · #sim-controls</p>
       <div id="sim-controls">
-        <div class="control-group">
-          <label>매개변수 1 (예시)</label>
-          <div class="control-fake-slider"></div>
-        </div>
-        <div class="control-group">
-          <label>매개변수 2 (예시)</label>
-          <div class="control-fake-slider"></div>
-        </div>
-        <div class="control-group">
-          <label>실행 제어</label>
-          <div class="control-fake-buttons">
-            <button class="btn-mini" type="button">재생</button>
-            <button class="btn-mini" type="button">일시정지</button>
-            <button class="btn-mini" type="button">초기화</button>
+
+        <!-- ===================== 간섭 컨트롤 ===================== -->
+        <div class="control-panel-group active" data-panel="interference">
+
+          <div class="wave-config">
+            <h4>파동 1</h4>
+            <div class="control-group">
+              <label>진폭 <span class="control-value" id="val-interference-wave1-amplitude">5.0</span></label>
+              <input type="range" class="wave-slider" min="0" max="10" step="0.1" value="5"
+                data-scene="interference" data-wave="wave1" data-param="amplitude">
+            </div>
+            <div class="control-group">
+              <label>주기 <span class="control-value" id="val-interference-wave1-period">5.0</span></label>
+              <input type="range" class="wave-slider" min="0" max="10" step="0.1" value="5"
+                data-scene="interference" data-wave="wave1" data-param="period">
+            </div>
+            <div class="control-group">
+              <label>진동수 <span class="control-value" id="val-interference-wave1-frequency">1.0</span></label>
+              <input type="range" class="wave-slider" min="0" max="10" step="0.1" value="1"
+                data-scene="interference" data-wave="wave1" data-param="frequency">
+            </div>
+          </div>
+
+          <div class="wave-config">
+            <h4>파동 2</h4>
+            <div class="control-group">
+              <label>진폭 <span class="control-value" id="val-interference-wave2-amplitude">5.0</span></label>
+              <input type="range" class="wave-slider" min="0" max="10" step="0.1" value="5"
+                data-scene="interference" data-wave="wave2" data-param="amplitude">
+            </div>
+            <div class="control-group">
+              <label>주기 <span class="control-value" id="val-interference-wave2-period">5.0</span></label>
+              <input type="range" class="wave-slider" min="0" max="10" step="0.1" value="5"
+                data-scene="interference" data-wave="wave2" data-param="period">
+            </div>
+            <div class="control-group">
+              <label>진동수 <span class="control-value" id="val-interference-wave2-frequency">1.0</span></label>
+              <input type="range" class="wave-slider" min="0" max="10" step="0.1" value="1"
+                data-scene="interference" data-wave="wave2" data-param="frequency">
+            </div>
+          </div>
+
+          <div class="exec-block">
+            <div class="control-fake-buttons">
+              <button class="btn-mini" type="button" data-action="play" data-scene="interference">재생</button>
+            </div>
+            <div class="control-fake-buttons">
+              <button class="btn-mini phase-toggle-btn" type="button" data-action="phase" data-scene="interference" data-wave="wave2">파동 2 반대위상 시작</button>
+            </div>
+            <div class="control-fake-buttons">
+              <button class="btn-mini" type="button" data-action="pause" data-scene="interference">일시정지</button>
+            </div>
+            <div class="control-fake-buttons">
+              <button class="btn-mini" type="button" data-action="reset" data-scene="interference">초기화</button>
+            </div>
           </div>
         </div>
+
+        <!-- ===================== 회절 컨트롤 ===================== -->
+        <div class="control-panel-group" data-panel="diffraction">
+
+          <div class="wave-config">
+            <h4>입사 파동</h4>
+            <div class="control-group">
+              <label>진폭 <span class="control-value" id="val-diffraction-wave1-amplitude">5.0</span></label>
+              <input type="range" class="wave-slider" min="0" max="10" step="0.1" value="5"
+                data-scene="diffraction" data-wave="wave1" data-param="amplitude">
+            </div>
+            <div class="control-group">
+              <label>주기 <span class="control-value" id="val-diffraction-wave1-period">5.0</span></label>
+              <input type="range" class="wave-slider" min="0" max="10" step="0.1" value="5"
+                data-scene="diffraction" data-wave="wave1" data-param="period">
+            </div>
+            <div class="control-group">
+              <label>진동수 <span class="control-value" id="val-diffraction-wave1-frequency">1.0</span></label>
+              <input type="range" class="wave-slider" min="0" max="10" step="0.1" value="1"
+                data-scene="diffraction" data-wave="wave1" data-param="frequency">
+            </div>
+          </div>
+
+          <div class="wave-config">
+            <h4>틈(슬릿)</h4>
+            <div class="control-group">
+              <label>틈의 크기 <span class="control-value" id="val-diffraction-slit-width">5.0</span></label>
+              <input type="range" class="wave-slider" min="0" max="10" step="0.1" value="5"
+                data-scene="diffraction" data-param="width">
+            </div>
+          </div>
+
+          <div class="exec-block">
+            <div class="control-fake-buttons">
+              <button class="btn-mini" type="button" data-action="play" data-scene="diffraction">재생</button>
+            </div>
+            <div class="control-fake-buttons">
+              <button class="btn-mini" type="button" data-action="pause" data-scene="diffraction">일시정지</button>
+            </div>
+            <div class="control-fake-buttons">
+              <button class="btn-mini" type="button" data-action="reset" data-scene="diffraction">초기화</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===================== 간섭+회절 동시 컨트롤 ===================== -->
+        <div class="control-panel-group" data-panel="combined">
+
+          <div class="wave-config">
+            <h4>파동 1 (슬릿 A)</h4>
+            <div class="control-group">
+              <label>진폭 <span class="control-value" id="val-combined-wave1-amplitude">5.0</span></label>
+              <input type="range" class="wave-slider" min="0" max="10" step="0.1" value="5"
+                data-scene="combined" data-wave="wave1" data-param="amplitude">
+            </div>
+            <div class="control-group">
+              <label>주기 <span class="control-value" id="val-combined-wave1-period">5.0</span></label>
+              <input type="range" class="wave-slider" min="0" max="10" step="0.1" value="5"
+                data-scene="combined" data-wave="wave1" data-param="period">
+            </div>
+            <div class="control-group">
+              <label>진동수 <span class="control-value" id="val-combined-wave1-frequency">1.0</span></label>
+              <input type="range" class="wave-slider" min="0" max="10" step="0.1" value="1"
+                data-scene="combined" data-wave="wave1" data-param="frequency">
+            </div>
+          </div>
+
+          <div class="wave-config">
+            <h4>파동 2 (슬릿 B)</h4>
+            <div class="control-group">
+              <label>진폭 <span class="control-value" id="val-combined-wave2-amplitude">5.0</span></label>
+              <input type="range" class="wave-slider" min="0" max="10" step="0.1" value="5"
+                data-scene="combined" data-wave="wave2" data-param="amplitude">
+            </div>
+            <div class="control-group">
+              <label>주기 <span class="control-value" id="val-combined-wave2-period">5.0</span></label>
+              <input type="range" class="wave-slider" min="0" max="10" step="0.1" value="5"
+                data-scene="combined" data-wave="wave2" data-param="period">
+            </div>
+            <div class="control-group">
+              <label>진동수 <span class="control-value" id="val-combined-wave2-frequency">1.0</span></label>
+              <input type="range" class="wave-slider" min="0" max="10" step="0.1" value="1"
+                data-scene="combined" data-wave="wave2" data-param="frequency">
+            </div>
+          </div>
+
+          <div class="wave-config">
+            <h4>틈(슬릿) 크기</h4>
+            <div class="control-group">
+              <label>틈의 크기 <span class="control-value" id="val-combined-slit-width">5.0</span></label>
+              <input type="range" class="wave-slider" min="0" max="10" step="0.1" value="5"
+                data-scene="combined" data-param="width">
+            </div>
+          </div>
+
+          <div class="exec-block">
+            <div class="control-fake-buttons">
+              <button class="btn-mini" type="button" data-action="play" data-scene="combined">재생</button>
+            </div>
+            <div class="control-fake-buttons">
+              <button class="btn-mini phase-toggle-btn" type="button" data-action="phase" data-scene="combined" data-wave="wave1">파동 1 반대위상 시작</button>
+            </div>
+            <div class="control-fake-buttons">
+              <button class="btn-mini phase-toggle-btn" type="button" data-action="phase" data-scene="combined" data-wave="wave2">파동 2 반대위상 시작</button>
+            </div>
+            <div class="control-fake-buttons">
+              <button class="btn-mini" type="button" data-action="pause" data-scene="combined">일시정지</button>
+            </div>
+            <div class="control-fake-buttons">
+              <button class="btn-mini" type="button" data-action="reset" data-scene="combined">초기화</button>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
   </section>
 
   <section class="wrap notes-grid">
     <div class="panel">
-      <h3>개념 설명 (자리)</h3>
-      <p>이 영역에 해당 개념에 대한 설명 텍스트를 작성합니다.</p>
+      <h3>개념 설명</h3>
+      <p>
+        두 파동이 같은 매질에서 겹치면 변위가 그대로 더해지는 <b>중첩의 원리</b>가 성립합니다.
+        마루와 마루(또는 골과 골)가 만나면 진폭이 커지는 <b>보강 간섭</b>이,
+        마루와 골이 만나면 진폭이 줄거나 사라지는 <b>상쇄 간섭</b>이 일어납니다.
+        한편 파동이 좁은 틈을 지나면 틈이 새로운 파원처럼 작용해 사방으로 퍼져나가는데,
+        이것이 <b>회절</b>입니다. 틈이 좁을수록 회절이 두드러집니다.
+      </p>
     </div>
     <div class="panel">
-      <h3>관련 수식 (자리)</h3>
-      <div class="formula-placeholder">수식 · 공식이 들어갈 자리</div>
+      <h3>관련 수식</h3>
+      <div class="formula-placeholder">
+        중첩: y = y₁ + y₂ = A₁sin(k₁x − ω₁t + φ₁) + A₂sin(k₂x − ω₂t + φ₂)<br>
+        보강 조건: 위상차 Δφ = 2mπ (m은 정수)<br>
+        상쇄 조건: 위상차 Δφ = (2m+1)π
+      </div>
     </div>
   </section>
 
