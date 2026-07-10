@@ -5,6 +5,87 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>최적화 | 개념 실험실</title>
 <link rel="stylesheet" href="../../assets/css/style.css">
+<style>
+  /* ============================================================
+     이 페이지(최적화) 전용 보조 스타일.
+     공용 style.css는 수정하지 않고, 여기서 레이아웃만 보완합니다.
+     색상/폰트는 모두 style.css의 CSS 변수를 그대로 재사용합니다.
+     ============================================================ */
+
+  .mode-switch {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+  }
+  .mode-switch .btn-mini { cursor: pointer; }
+  .mode-switch .btn-mini.is-active {
+    border-color: var(--accent-math);
+    color: var(--accent-math);
+  }
+
+  #sim-stage { padding: 0; border: none; background: none; }
+
+  .opt-scene-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    background:
+      linear-gradient(var(--bg-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .opt-canvas { width: 100%; height: auto; display: block; border-radius: 6px; }
+
+  .opt-readout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+  }
+  .opt-readout b { color: var(--accent-math); font-weight: 600; }
+
+  .opt-graphs {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 16px;
+  }
+  @media (max-width: 620px) {
+    .opt-graphs { grid-template-columns: 1fr; }
+  }
+
+  .opt-graph-block { border-top: 1px dashed var(--border); padding-top: 12px; }
+  .opt-graph-label {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0 0 8px;
+  }
+  .opt-graph-canvas { width: 100%; height: 130px; display: block; }
+
+  .opt-hint { font-size: 0.78rem; color: var(--ink-muted); margin: 0; }
+
+  .opt-slider-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .opt-value {
+    font-family: var(--font-mono);
+    color: var(--accent-math);
+    font-size: 0.85rem;
+  }
+  .opt-slider { width: 100%; accent-color: var(--accent-math); }
+</style>
 </head>
 <body>
 
@@ -21,7 +102,7 @@
     <nav class="nav-links" id="navLinks">
       <a href="../../index.html">홈</a>
       <a href="../../math.html" aria-current="page">수학</a>
-      <a href="../../physics.html" >물리학</a>
+      <a href="../../physics.html">물리학</a>
       <a href="https://github.com/" target="_blank" rel="noopener">GitHub 저장소</a>
     </nav>
     <button class="nav-toggle" aria-label="메뉴 열기" aria-expanded="false">☰</button>
@@ -36,40 +117,177 @@
   </p>
 
   <section class="wrap sim-header">
-    <p class="eyebrow ">MATH</p>
+    <p class="eyebrow">MATH</p>
     <h1>최적화</h1>
-    <p class="desc">넓이·길이 등의 최대·최소를 함수와 도함수 그래프를 통해 시각적으로 탐색합니다.</p>
+    <p class="desc">넓이·부피 같은 값을 하나의 변수에 대한 함수로 나타낸 뒤, 도함수를 이용해 최댓값·최솟값을 찾는 세 가지 대표 상황을 시각화합니다. 슬라이더로 변수를 바꾸면 도형, 함수 그래프, 도함수 그래프가 함께 움직입니다.</p>
     <div class="status-row">
-      <span class="badge badge-open">틀 준비됨</span>
+      <span class="badge badge-open">구현됨</span>
       <span class="badge">담당자: 미배정</span>
+    </div>
+  </section>
+
+  <section class="wrap" style="padding-top: 8px;">
+    <div class="mode-switch" id="optModeSwitch" role="tablist" aria-label="최적화 상황 선택">
+      <button class="btn-mini is-active" type="button" data-mode="fence" role="tab" aria-selected="true">① 울타리 직사각형</button>
+      <button class="btn-mini" type="button" data-mode="cylinder" role="tab" aria-selected="false">② 원기둥 캔</button>
+      <button class="btn-mini" type="button" data-mode="box" role="tab" aria-selected="false">③ 상자 만들기</button>
     </div>
   </section>
 
   <section class="wrap sim-layout">
     <div class="panel">
       <p class="panel-label">시각화 영역 · #sim-stage</p>
-      <div class="stage-placeholder" id="sim-stage">
-        여기에 최적화 시뮬레이션 캔버스/SVG가 들어갑니다
+
+      <div id="sim-stage">
+        <!-- ① 울타리 직사각형 -->
+        <div id="optStageFence" class="opt-scene-panel">
+          <canvas id="optFenceShapeCanvas" class="opt-canvas" width="640" height="220" aria-label="둘레가 고정된 직사각형 울타리"></canvas>
+
+          <div class="opt-readout">
+            <span>가로 x: <b id="optFenceXReadout">0</b></span>
+            <span>넓이 A(x): <b id="optFenceAreaReadout">0</b></span>
+            <span>A′(x): <b id="optFenceDerivReadout">0</b></span>
+          </div>
+
+          <div class="opt-graphs">
+            <div class="opt-graph-block">
+              <p class="opt-graph-label">넓이 함수 A(x)</p>
+              <canvas id="optFenceGraphF" class="opt-canvas opt-graph-canvas" width="320" height="130"></canvas>
+            </div>
+            <div class="opt-graph-block">
+              <p class="opt-graph-label">도함수 A′(x)</p>
+              <canvas id="optFenceGraphFPrime" class="opt-canvas opt-graph-canvas" width="320" height="130"></canvas>
+            </div>
+          </div>
+
+          <p class="opt-hint">Tip. 둘레 L이 고정된 직사각형에서 가로를 x라 하면 세로는 (L/2 − x)입니다. A′(x) = 0이 되는 지점(그래프의 점선)에서 넓이가 최대가 됩니다.</p>
+        </div>
+
+        <!-- ② 원기둥 캔 -->
+        <div id="optStageCylinder" class="opt-scene-panel" style="display: none;">
+          <canvas id="optCylinderShapeCanvas" class="opt-canvas" width="640" height="220" aria-label="부피가 고정된 원기둥 캔의 단면"></canvas>
+
+          <div class="opt-readout">
+            <span>반지름 r: <b id="optCylinderRReadout">0</b></span>
+            <span>표면적 S(r): <b id="optCylinderSReadout">0</b></span>
+            <span>S′(r): <b id="optCylinderDerivReadout">0</b></span>
+          </div>
+
+          <div class="opt-graphs">
+            <div class="opt-graph-block">
+              <p class="opt-graph-label">표면적 함수 S(r)</p>
+              <canvas id="optCylinderGraphF" class="opt-canvas opt-graph-canvas" width="320" height="130"></canvas>
+            </div>
+            <div class="opt-graph-block">
+              <p class="opt-graph-label">도함수 S′(r)</p>
+              <canvas id="optCylinderGraphFPrime" class="opt-canvas opt-graph-canvas" width="320" height="130"></canvas>
+            </div>
+          </div>
+
+          <p class="opt-hint">Tip. 부피 V가 고정된 원기둥에서 반지름을 r이라 하면 높이는 V/(πr²)입니다. 표면적 S(r) = 2πr² + 2V/r을 최소로 하는 r을 찾습니다.</p>
+        </div>
+
+        <!-- ③ 상자 만들기 -->
+        <div id="optStageBox" class="opt-scene-panel" style="display: none;">
+          <canvas id="optBoxShapeCanvas" class="opt-canvas" width="640" height="220" aria-label="정사각형 판지에서 모서리를 잘라 만든 상자"></canvas>
+
+          <div class="opt-readout">
+            <span>자르는 길이 x: <b id="optBoxXReadout">0</b></span>
+            <span>부피 V(x): <b id="optBoxVReadout">0</b></span>
+            <span>V′(x): <b id="optBoxDerivReadout">0</b></span>
+          </div>
+
+          <div class="opt-graphs">
+            <div class="opt-graph-block">
+              <p class="opt-graph-label">부피 함수 V(x)</p>
+              <canvas id="optBoxGraphF" class="opt-canvas opt-graph-canvas" width="320" height="130"></canvas>
+            </div>
+            <div class="opt-graph-block">
+              <p class="opt-graph-label">도함수 V′(x)</p>
+              <canvas id="optBoxGraphFPrime" class="opt-canvas opt-graph-canvas" width="320" height="130"></canvas>
+            </div>
+          </div>
+
+          <p class="opt-hint">Tip. 한 변이 a인 정사각형 판지의 네 모서리에서 변의 길이 x인 정사각형을 잘라내고 접으면 부피 V(x) = x(a − 2x)²인 뚜껑 없는 상자가 됩니다.</p>
+        </div>
       </div>
     </div>
 
     <div class="panel">
       <p class="panel-label">컨트롤 패널 · #sim-controls</p>
       <div id="sim-controls">
-        <div class="control-group">
-          <label>매개변수 1 (예시)</label>
-          <div class="control-fake-slider"></div>
+        <!-- ① 울타리 직사각형 컨트롤 -->
+        <div id="optControlsFence">
+          <div class="control-group">
+            <div class="opt-slider-row">
+              <label for="optFenceL" style="margin:0;">둘레 L (고정값)</label>
+              <span class="opt-value" id="optFenceLValue">40</span>
+            </div>
+            <input type="range" id="optFenceL" class="opt-slider" min="20" max="80" step="2" value="40">
+          </div>
+          <div class="control-group">
+            <div class="opt-slider-row">
+              <label for="optFenceX" style="margin:0;">가로 x</label>
+              <span class="opt-value" id="optFenceXValue">10</span>
+            </div>
+            <input type="range" id="optFenceX" class="opt-slider" min="0.5" max="19.5" step="0.1" value="10">
+          </div>
+          <div class="control-group">
+            <label>실행 제어</label>
+            <div class="control-fake-buttons">
+              <button class="btn-mini" type="button" id="optFenceMaxBtn">최댓값으로 이동</button>
+              <button class="btn-mini" type="button" id="optFenceResetBtn">초기화</button>
+            </div>
+          </div>
         </div>
-        <div class="control-group">
-          <label>매개변수 2 (예시)</label>
-          <div class="control-fake-slider"></div>
+
+        <!-- ② 원기둥 캔 컨트롤 -->
+        <div id="optControlsCylinder" style="display: none;">
+          <div class="control-group">
+            <div class="opt-slider-row">
+              <label for="optCylinderV" style="margin:0;">부피 V (고정값)</label>
+              <span class="opt-value" id="optCylinderVValue">300</span>
+            </div>
+            <input type="range" id="optCylinderV" class="opt-slider" min="100" max="800" step="10" value="300">
+          </div>
+          <div class="control-group">
+            <div class="opt-slider-row">
+              <label for="optCylinderR" style="margin:0;">반지름 r</label>
+              <span class="opt-value" id="optCylinderRValue">3.0</span>
+            </div>
+            <input type="range" id="optCylinderR" class="opt-slider" min="0.5" max="10" step="0.1" value="3">
+          </div>
+          <div class="control-group">
+            <label>실행 제어</label>
+            <div class="control-fake-buttons">
+              <button class="btn-mini" type="button" id="optCylinderMinBtn">최솟값으로 이동</button>
+              <button class="btn-mini" type="button" id="optCylinderResetBtn">초기화</button>
+            </div>
+          </div>
         </div>
-        <div class="control-group">
-          <label>실행 제어</label>
-          <div class="control-fake-buttons">
-            <button class="btn-mini" type="button">재생</button>
-            <button class="btn-mini" type="button">일시정지</button>
-            <button class="btn-mini" type="button">초기화</button>
+
+        <!-- ③ 상자 만들기 컨트롤 -->
+        <div id="optControlsBox" style="display: none;">
+          <div class="control-group">
+            <div class="opt-slider-row">
+              <label for="optBoxA" style="margin:0;">판지 한 변 a (고정값)</label>
+              <span class="opt-value" id="optBoxAValue">20</span>
+            </div>
+            <input type="range" id="optBoxA" class="opt-slider" min="10" max="40" step="1" value="20">
+          </div>
+          <div class="control-group">
+            <div class="opt-slider-row">
+              <label for="optBoxX" style="margin:0;">잘라내는 길이 x</label>
+              <span class="opt-value" id="optBoxXValue">3.0</span>
+            </div>
+            <input type="range" id="optBoxX" class="opt-slider" min="0.1" max="9.9" step="0.1" value="3">
+          </div>
+          <div class="control-group">
+            <label>실행 제어</label>
+            <div class="control-fake-buttons">
+              <button class="btn-mini" type="button" id="optBoxMaxBtn">최댓값으로 이동</button>
+              <button class="btn-mini" type="button" id="optBoxResetBtn">초기화</button>
+            </div>
           </div>
         </div>
       </div>
@@ -78,12 +296,21 @@
 
   <section class="wrap notes-grid">
     <div class="panel">
-      <h3>개념 설명 (자리)</h3>
-      <p>이 영역에 해당 개념에 대한 설명 텍스트를 작성합니다.</p>
+      <h3>개념 설명</h3>
+      <p>
+        세 상황 모두 "조건 하나가 고정된 상태에서, 나머지를 하나의 변수 x로 표현한 함수의 최댓값(또는 최솟값)을 찾는다"는 같은 구조를 갖습니다.
+        함수 f(x)를 세우고 나면, 도함수 f′(x) = 0이 되는 지점에서 극값(최댓값·최솟값 후보)이 나타납니다.
+        그래프에서 f(x) 곡선의 봉우리(또는 골짜기)와, f′(x) 곡선이 0을 지나는 지점(점선)이 같은 x값에서 만나는 것을 확인해 보세요.
+        슬라이더로 고정 조건(둘레, 부피, 판지 크기)을 바꾸면 최적의 x값 자체도 달라집니다.
+      </p>
     </div>
     <div class="panel">
-      <h3>관련 수식 (자리)</h3>
-      <div class="formula-placeholder">수식 · 공식이 들어갈 자리</div>
+      <h3>관련 수식</h3>
+      <div class="formula-placeholder">
+        ① 울타리: A(x) = x(L/2 − x), A′(x) = L/2 − 2x<br><br>
+        ② 원기둥 캔: S(r) = 2πr² + 2V/r, S′(r) = 4πr − 2V/r²<br><br>
+        ③ 상자: V(x) = x(a − 2x)², V′(x) = 12x² − 8ax + a²
+      </div>
     </div>
   </section>
 
@@ -93,7 +320,8 @@
 
   <section class="wrap">
     <div class="dev-note">
-      담당자 안내: 시각화 로직은 <code>../../assets/js/pages/optimization.js</code>에 작성하고, 아래 스크립트 태그로 불러옵니다.
+      담당자 안내: 시각화 로직은 <code>../../assets/js/pages/optimization.js</code>에 작성합니다.
+      세 상황 모두 구현되어 있으며, 상황 전환은 <code>#optModeSwitch</code>의 탭 버튼으로 이루어집니다.
       DOM 구조(<code>#sim-stage</code>, <code>#sim-controls</code>)는 다른 페이지와 통일되어 있으니 id는 유지해 주세요.
     </div>
   </section>
