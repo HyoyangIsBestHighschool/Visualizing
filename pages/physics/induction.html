@@ -147,7 +147,7 @@
   <section class="wrap sim-header">
     <p class="eyebrow physics">PHYSICS</p>
     <h1>전자기 유도</h1>
-    <p class="desc">자기 선속이 변할 때 전류가 유도되는 두 가지 대표 상황을 비교합니다. 코일이 자석 사이에서 회전하는 경우와, 코일은 가만히 있고 자석이 움직이는 경우 — 두 경우 모두 결국 같은 원리(자기 선속의 변화)로 설명됩니다.</p>
+    <p class="desc">자기 선속이 변할 때 전류가 유도되는 두 가지 대표 상황을 비교합니다. 코일이 자석 사이에서 회전하는 경우와, 막대자석이 원형 코일의 내부를 통과하며 지나가는 경우 — 두 경우 모두 결국 같은 원리(자기 선속의 변화)로 설명됩니다.</p>
     <div class="status-row">
       <span class="badge badge-open">구현됨</span>
       <span class="badge">담당자: 미배정</span>
@@ -189,7 +189,7 @@
         <!-- ② 움직이는 자석 (구현됨) -->
         <div id="indStageMovingMagnet" class="ind-scene-panel" style="display: none;">
           <div class="ind-scene-wrap">
-            <canvas id="indMoveSceneCanvas" class="ind-canvas" width="640" height="280" aria-label="정지한 코일에 가까워지고 멀어지는 자석"></canvas>
+            <canvas id="indMoveSceneCanvas" class="ind-canvas" width="640" height="280" aria-label="원형 코일의 내부를 통과하며 움직이는 자석"></canvas>
           </div>
 
           <div class="ind-readout">
@@ -203,7 +203,7 @@
             <canvas id="indMoveGraphCanvas" class="ind-canvas ind-graph-canvas" width="640" height="120" aria-label="시간에 따른 유도 전류 그래프"></canvas>
           </div>
 
-          <p class="ind-hint">Tip. 자석을 마우스(또는 손가락)로 직접 드래그해서 움직여볼 수도 있어요. 코일에 가까워질 때와 멀어질 때 전류의 방향이 반대가 되는 것을 확인해 보세요.</p>
+          <p class="ind-hint">Tip. 자석을 마우스(또는 손가락)로 직접 드래그해서 움직여볼 수도 있어요. 자석이 코일 내부를 통과하기 전과 후에 전류의 방향이 반대가 되는 것을 확인해 보세요.</p>
         </div>
       </div>
     </div>
@@ -282,7 +282,7 @@
       <p>
         두 상황 모두 코일을 통과하는 자기 선속(磁氣 線束)이 시간에 따라 변한다는 공통점이 있습니다.
         패러데이 법칙에 따르면, 이 변화율에 비례하는 기전력이 유도되어 전류가 흐릅니다.
-        ①에서는 코일이 회전하면서 선속이 변하고, ②에서는 자석과 코일 사이 거리가 변하면서 선속이 변합니다.
+        ①에서는 코일이 회전하면서 선속이 변하고, ②에서는 자석이 코일 내부를 통과하며 코일과의 거리(와 상대적 위치)가 변하면서 선속이 변합니다.
         공통적으로 <strong>선속이 변하지 않으면(정지해 있으면) 전류도 흐르지 않습니다</strong> —
         전류는 자기장의 세기 자체가 아니라 자기 선속의 <em>변화</em>에서 나옵니다.
       </p>
