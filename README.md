@@ -16,8 +16,7 @@ pages/
     optimization.html          최적화
     series.html                급수와 정적분의 관계
   physics/
-    magnetic-field.html        자석에 의한 자기장
-    induction.html              전자기 유도
+    induction.html               전자기 유도 (자석에 의한 자기장 + 전자기 유도 통합)
     refraction.html             굴절과 스넬의 법칙
     interference.html           간섭과 회절
     doppler.html                도플러 효과
