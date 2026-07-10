@@ -5,6 +5,89 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>자석에 의한 자기장 | 개념 실험실</title>
 <link rel="stylesheet" href="../../assets/css/style.css">
+<style>
+  /* ============================================================
+     이 페이지(자석에 의한 자기장) 전용 보조 스타일.
+     공용 style.css는 수정하지 않고, 여기서 레이아웃만 보완합니다.
+     색상/폰트는 모두 style.css의 CSS 변수를 그대로 재사용합니다.
+     ============================================================ */
+
+  #sim-stage {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    padding: 16px;
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    background:
+      linear-gradient(var(--bg-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+  }
+
+  .mf-scene-wrap { width: 100%; line-height: 0; }
+
+  #mfSceneCanvas {
+    width: 100%;
+    height: auto;
+    display: block;
+    cursor: grab;
+    touch-action: none;
+    border-radius: 6px;
+  }
+  #mfSceneCanvas:active { cursor: grabbing; }
+
+  .mf-readout {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+  }
+  .mf-readout b { color: var(--accent-physics); font-weight: 600; }
+
+  .mf-graph-wrap {
+    border-top: 1px dashed var(--border);
+    padding-top: 12px;
+  }
+  .mf-graph-label {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin: 0 0 8px;
+  }
+  #mfGraphCanvas { width: 100%; height: 120px; display: block; }
+
+  .mf-hint {
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+    margin: 0;
+  }
+
+  .mf-slider-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 8px;
+  }
+  .mf-value {
+    font-family: var(--font-mono);
+    color: var(--accent-physics);
+    font-size: 0.85rem;
+  }
+  .mf-slider {
+    width: 100%;
+    accent-color: var(--accent-physics);
+  }
+
+  #mfPlayBtn.is-playing {
+    border-color: var(--accent-physics);
+    color: var(--accent-physics);
+  }
+</style>
 </head>
 <body>
 
@@ -20,7 +103,7 @@
     </a>
     <nav class="nav-links" id="navLinks">
       <a href="../../index.html">홈</a>
-      <a href="../../math.html" >수학</a>
+      <a href="../../math.html">수학</a>
       <a href="../../physics.html" aria-current="page">물리학</a>
       <a href="https://github.com/" target="_blank" rel="noopener">GitHub 저장소</a>
     </nav>
@@ -38,9 +121,9 @@
   <section class="wrap sim-header">
     <p class="eyebrow physics">PHYSICS</p>
     <h1>자석에 의한 자기장</h1>
-    <p class="desc">막대자석 주변에 형성되는 자기장의 방향과 세기를 시각화합니다.</p>
+    <p class="desc">두 자석 사이에서 회전하는 코일에 유도되는 전류를 시각화합니다. 코일을 직접 돌려보거나 자동 회전시키면서, 회전 속도와 전류의 관계를 확인해 보세요.</p>
     <div class="status-row">
-      <span class="badge badge-open">틀 준비됨</span>
+      <span class="badge badge-open">구현됨</span>
       <span class="badge">담당자: 미배정</span>
     </div>
   </section>
@@ -48,8 +131,24 @@
   <section class="wrap sim-layout">
     <div class="panel">
       <p class="panel-label">시각화 영역 · #sim-stage</p>
-      <div class="stage-placeholder" id="sim-stage">
-        여기에 자석에 의한 자기장 시뮬레이션 캔버스/SVG가 들어갑니다
+
+      <div id="sim-stage">
+        <div class="mf-scene-wrap">
+          <canvas id="mfSceneCanvas" width="640" height="360" aria-label="두 자석 사이에서 회전하는 코일과 전류계"></canvas>
+        </div>
+
+        <div class="mf-readout">
+          <span>회전각 θ: <b id="mfAngleReadout">0°</b></span>
+          <span>유도 전류: <b id="mfCurrentReadout">0.00 A</b></span>
+          <span>회전 방향: <b id="mfDirReadout">정지</b></span>
+        </div>
+
+        <div class="mf-graph-wrap">
+          <p class="mf-graph-label">전류 – 시간 그래프</p>
+          <canvas id="mfGraphCanvas" width="640" height="120" aria-label="시간에 따른 유도 전류 그래프"></canvas>
+        </div>
+
+        <p class="mf-hint">Tip. 코일을 마우스(또는 손가락)로 직접 드래그해서 돌려볼 수도 있어요. 빠르게 돌릴수록 더 큰 전류가 유도됩니다.</p>
       </div>
     </div>
 
@@ -57,19 +156,26 @@
       <p class="panel-label">컨트롤 패널 · #sim-controls</p>
       <div id="sim-controls">
         <div class="control-group">
-          <label>매개변수 1 (예시)</label>
-          <div class="control-fake-slider"></div>
+          <div class="mf-slider-row">
+            <label for="mfSpeed" style="margin:0;">회전 속도</label>
+            <span class="mf-value" id="mfSpeedValue">90°/s</span>
+          </div>
+          <input type="range" id="mfSpeed" class="mf-slider" min="-180" max="180" step="5" value="90">
         </div>
+
         <div class="control-group">
-          <label>매개변수 2 (예시)</label>
-          <div class="control-fake-slider"></div>
+          <div class="mf-slider-row">
+            <label for="mfStrength" style="margin:0;">자석 세기</label>
+            <span class="mf-value" id="mfStrengthValue">1.0×</span>
+          </div>
+          <input type="range" id="mfStrength" class="mf-slider" min="0.5" max="2" step="0.1" value="1">
         </div>
+
         <div class="control-group">
           <label>실행 제어</label>
           <div class="control-fake-buttons">
-            <button class="btn-mini" type="button">재생</button>
-            <button class="btn-mini" type="button">일시정지</button>
-            <button class="btn-mini" type="button">초기화</button>
+            <button class="btn-mini is-playing" type="button" id="mfPlayBtn">일시정지</button>
+            <button class="btn-mini" type="button" id="mfResetBtn">초기화</button>
           </div>
         </div>
       </div>
@@ -78,12 +184,23 @@
 
   <section class="wrap notes-grid">
     <div class="panel">
-      <h3>개념 설명 (자리)</h3>
-      <p>이 영역에 해당 개념에 대한 설명 텍스트를 작성합니다.</p>
+      <h3>개념 설명</h3>
+      <p>
+        코일이 자석 사이에서 회전하면 코일을 통과하는 자기 선속(磁氣 線束)이 계속 변합니다.
+        패러데이 법칙에 따르면, 이 변화율에 비례하는 기전력이 유도되어 전류계에 전류가 흐릅니다.
+        중요한 점은 <strong>코일이 멈춰 있으면 자기장 속에 있어도 전류가 흐르지 않는다</strong>는 것입니다 —
+        전류는 자기장의 세기가 아니라 자기 선속의 <em>변화</em>에서 나옵니다.
+        코일이 자석과 나란해지는 순간(그림에서 폭이 가장 넓어 보일 때) 선속이 가장 빠르게 변하므로
+        전류도 이때 최댓값을 가집니다.
+      </p>
     </div>
     <div class="panel">
-      <h3>관련 수식 (자리)</h3>
-      <div class="formula-placeholder">수식 · 공식이 들어갈 자리</div>
+      <h3>관련 수식</h3>
+      <div class="formula-placeholder">
+        Φ = B·A·cos θ<br>
+        ε = -dΦ/dt = B·A·ω·sin θ<br>
+        I = ε / R ∝ (자석 세기) × (각속도 ω) × sin θ
+      </div>
     </div>
   </section>
 
