@@ -5,6 +5,36 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>매개변수와 곡선 | 개념 실험실</title>
 <link rel="stylesheet" href="../../assets/css/style.css">
+<style>
+  /* 이 페이지(매개변수와 곡선) 전용 보조 스타일. 공용 style.css의 변수만 사용합니다. */
+  .pc-select {
+    width: 100%;
+    background: var(--panel-raised);
+    color: var(--ink);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+  }
+  .pc-select:focus-visible { outline: 2px solid var(--accent-math); outline-offset: 2px; }
+  .pc-t-scale {
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--ink-muted);
+    margin-top: 6px;
+  }
+  .pc-readout {
+    text-align: left;
+    white-space: pre-line;
+    line-height: 1.7;
+  }
+  .pc-readout .pc-x { color: var(--accent-math); }
+  .pc-readout .pc-y { color: var(--accent-physics); }
+  #pc-canvas { touch-action: none; }
+</style>
 </head>
 <body>
 
@@ -48,8 +78,8 @@
   <section class="wrap sim-layout">
     <div class="panel">
       <p class="panel-label">시각화 영역 · #sim-stage</p>
-      <div class="stage-placeholder" id="sim-stage">
-        여기에 매개변수와 곡선 시뮬레이션 캔버스/SVG가 들어갑니다
+      <div class="stage-placeholder" id="sim-stage" style="padding:0; overflow:hidden;">
+        <canvas id="pc-canvas" style="width:100%; height:100%; display:block;"></canvas>
       </div>
     </div>
 
@@ -57,20 +87,33 @@
       <p class="panel-label">컨트롤 패널 · #sim-controls</p>
       <div id="sim-controls">
         <div class="control-group">
-          <label>매개변수 1 (예시)</label>
-          <div class="control-fake-slider"></div>
+          <label for="pc-fn-x">x(t) 함수 선택</label>
+          <select id="pc-fn-x" class="pc-select"></select>
         </div>
         <div class="control-group">
-          <label>매개변수 2 (예시)</label>
-          <div class="control-fake-slider"></div>
+          <label for="pc-fn-y">y(t) 함수 선택</label>
+          <select id="pc-fn-y" class="pc-select"></select>
+        </div>
+        <div class="control-group">
+          <label for="pc-t-slider">매개변수 t (0 ~ 2π)</label>
+          <input type="range" id="pc-t-slider" min="0" max="6.283185307179586" step="0.0015" value="1.2" style="width:100%;">
+          <div class="pc-t-scale">
+            <span>0</span>
+            <span id="pc-t-value">t = 1.200</span>
+            <span>2π</span>
+          </div>
         </div>
         <div class="control-group">
           <label>실행 제어</label>
           <div class="control-fake-buttons">
-            <button class="btn-mini" type="button">재생</button>
-            <button class="btn-mini" type="button">일시정지</button>
-            <button class="btn-mini" type="button">초기화</button>
+            <button class="btn-mini" id="pc-btn-play" type="button">재생</button>
+            <button class="btn-mini" id="pc-btn-pause" type="button">일시정지</button>
+            <button class="btn-mini" id="pc-btn-reset" type="button">초기화</button>
           </div>
+        </div>
+        <div class="control-group">
+          <label>실시간 값 · P(x, y)와 미분</label>
+          <div class="formula-placeholder pc-readout" id="pc-readout"></div>
         </div>
       </div>
     </div>
@@ -78,12 +121,26 @@
 
   <section class="wrap notes-grid">
     <div class="panel">
-      <h3>개념 설명 (자리)</h3>
-      <p>이 영역에 해당 개념에 대한 설명 텍스트를 작성합니다.</p>
+      <h3>개념 설명</h3>
+      <p>
+        평면 위의 점 P(x, y)가 매개변수 t에 의해 x = x(t), y = y(t)로 각각 결정될 때,
+        t가 변함에 따라 P는 곡선을 그립니다. 이때 곡선의 접선 기울기는 x, y를
+        각각 t로 미분한 dx/dt, dy/dt의 비율로 구할 수 있습니다(연쇄법칙).
+        아래 시각화에서 점 P 위의 두 화살표는 각각 dx/dt(가로 방향 순간 변화율),
+        dy/dt(세로 방향 순간 변화율)를 나타내며, 두 화살표의 합성이 곡선의
+        접선 방향과 일치하는 것을 확인할 수 있습니다. dx/dt = 0이 되는 순간에는
+        접선이 수직이 되어 dy/dx가 정의되지 않습니다.
+      </p>
     </div>
     <div class="panel">
-      <h3>관련 수식 (자리)</h3>
-      <div class="formula-placeholder">수식 · 공식이 들어갈 자리</div>
+      <h3>관련 수식</h3>
+      <div class="formula-placeholder">
+        x = x(t),  y = y(t)
+
+        dy/dx = (dy/dt) / (dx/dt),  단 dx/dt ≠ 0
+
+        dx/dt = 0 인 지점 → 접선이 y축과 평행 (수직접선)
+      </div>
     </div>
   </section>
 
