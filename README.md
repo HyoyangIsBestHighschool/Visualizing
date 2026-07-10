@@ -16,6 +16,7 @@ pages/
     optimization.html          최적화
     series.html                급수와 정적분의 관계
     least-squares.html         최소제곱법
+    newton-method.html         뉴턴법과 실근의 근사
   physics/
     induction.html               전자기 유도 (자석에 의한 자기장 + 전자기 유도 통합)
     refraction.html             굴절과 스넬의 법칙
