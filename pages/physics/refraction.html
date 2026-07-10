@@ -5,6 +5,46 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>굴절과 스넬의 법칙 | 개념 실험실</title>
 <link rel="stylesheet" href="../../assets/css/style.css">
+<style>
+  .grid-3col { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+  .media-btn-container { display: flex; flex-direction: column; gap: 8px; margin-top: 6px; }
+  .media-sub-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  
+  .slider-container { display: flex; align-items: center; margin-top: 6px; }
+  .slider-container input[type="range"] { 
+    flex: 1; 
+    accent-color: var(--accent-physics);
+    background: var(--border);
+    height: 6px;
+    border-radius: 3px;
+  }
+  
+  .data-box {
+    background: var(--panel-raised);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px;
+    margin-bottom: 12px;
+  }
+  .data-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; font-size: 0.85rem; }
+  .data-row { display: flex; justify-content: space-between; border-bottom: 1px dashed var(--border); padding-bottom: 4px; }
+  .data-label { color: var(--ink-muted); }
+  .data-value { font-family: var(--font-mono); color: var(--accent-physics); font-weight: 600; }
+  
+  .dynamic-formula-area {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: var(--ink);
+    background: var(--bg);
+    padding: 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+  }
+  .formula-highlight { color: var(--accent-physics); font-weight: 600; }
+  
+  canvas { display: block; width: 100%; height: 100%; border-radius: 6px; background: #080d1a; }
+</style>
 </head>
 <body>
 
@@ -20,11 +60,9 @@
     </a>
     <nav class="nav-links" id="navLinks">
       <a href="../../index.html">홈</a>
-      <a href="../../math.html" >수학</a>
+      <a href="../../math.html">수학</a>
       <a href="../../physics.html" aria-current="page">물리학</a>
-      <a href="https://github.com/" target="_blank" rel="noopener">GitHub 저장소</a>
     </nav>
-    <button class="nav-toggle" aria-label="메뉴 열기" aria-expanded="false">☰</button>
   </div>
 </header>
 
@@ -38,69 +76,116 @@
   <section class="wrap sim-header">
     <p class="eyebrow physics">PHYSICS</p>
     <h1>굴절과 스넬의 법칙</h1>
-    <p class="desc">매질이 바뀔 때 파동이 꺾이는 정도를 스넬의 법칙과 함께 시각화합니다.</p>
-    <div class="status-row">
-      <span class="badge badge-open">틀 준비됨</span>
-      <span class="badge">담당자: 미배정</span>
-    </div>
+    <p class="desc">서로 다른 두 매질의 경계면에서 발생하는 파동의 굴절 현상과 스넬의 법칙을 시각적으로 실험합니다.</p>
   </section>
 
   <section class="wrap sim-layout">
     <div class="panel">
       <p class="panel-label">시각화 영역 · #sim-stage</p>
-      <div class="stage-placeholder" id="sim-stage">
-        여기에 굴절과 스넬의 법칙 시뮬레이션 캔버스/SVG가 들어갑니다
+      <div id="sim-stage" style="aspect-ratio: 4/3; position: relative;">
+        <canvas id="refractCanvas"></canvas>
       </div>
     </div>
 
     <div class="panel">
       <p class="panel-label">컨트롤 패널 · #sim-controls</p>
       <div id="sim-controls">
+        
         <div class="control-group">
-          <label>매개변수 1 (예시)</label>
-          <div class="control-fake-slider"></div>
-        </div>
-        <div class="control-group">
-          <label>매개변수 2 (예시)</label>
-          <div class="control-fake-slider"></div>
-        </div>
-        <div class="control-group">
-          <label>실행 제어</label>
-          <div class="control-fake-buttons">
-            <button class="btn-mini" type="button">재생</button>
-            <button class="btn-mini" type="button">일시정지</button>
-            <button class="btn-mini" type="button">초기화</button>
+          <label>파동의 종류</label>
+          <div class="grid-3col">
+            <button type="button" class="btn-mini" id="btn-wave-light" style="border-color: var(--accent-physics); color: var(--ink);">빛 (광파)</button>
+            <button type="button" class="btn-mini" id="btn-wave-sound">소리 (음파)</button>
+            <button type="button" class="btn-mini" id="btn-wave-water">물결파</button>
           </div>
         </div>
+
+        <div class="control-group">
+          <label>매질 1 (상단)</label>
+          <div class="media-btn-container">
+            <button type="button" class="btn-mini" id="m1-vacuum" style="width:100%;">진공 (Vacuum)</button>
+            <div class="media-sub-row">
+              <button type="button" class="btn-mini" id="m1-gas" style="border-color: var(--accent-physics); color: var(--ink);">기체 (공기)</button>
+              <button type="button" class="btn-mini" id="m1-liquid">액체 (물)</button>
+              <button type="button" class="btn-mini" id="m1-solid">고체 (유리)</button>
+            </div>
+            <div class="media-sub-row" id="m1-solid-detail" style="display: none; padding-top: 4px;">
+              <button type="button" class="btn-mini" id="m1-ice" style="font-size:11px;">얼음</button>
+              <button type="button" class="btn-mini" id="m1-glass" style="font-size:11px; border-color: var(--accent-physics); color: var(--ink);">유리</button>
+              <button type="button" class="btn-mini" id="m1-diamond" style="font-size:11px;">다이아몬드</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label>매질 2 (하단)</label>
+          <div class="media-btn-container">
+            <button type="button" class="btn-mini" id="m2-vacuum" style="width:100%;">진공 (Vacuum)</button>
+            <div class="media-sub-row">
+              <button type="button" class="btn-mini" id="m2-gas">기체 (공기)</button>
+              <button type="button" class="btn-mini" id="m2-liquid" style="border-color: var(--accent-physics); color: var(--ink);">액체 (물)</button>
+              <button type="button" class="btn-mini" id="m2-solid">고체 (유리)</button>
+            </div>
+            <div class="media-sub-row" id="m2-solid-detail" style="display: none; padding-top: 4px;">
+              <button type="button" class="btn-mini" id="m2-ice" style="font-size:11px;">얼음</button>
+              <button type="button" class="btn-mini" id="m2-glass" style="font-size:11px;">유리</button>
+              <button type="button" class="btn-mini" id="m2-diamond" style="font-size:11px;">다이아몬드</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label>입사각 조절: <span id="txt-angle1-display" style="color: var(--accent-physics); font-family: var(--font-mono);">45</span>°</label>
+          <div class="slider-container">
+            <input type="range" id="slider-incident-angle" min="0" max="90" value="45" step="1">
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label>애니메이션 제어</label>
+          <div class="control-fake-buttons">
+            <button class="btn-mini" id="btn-sim-play" type="button" style="background: var(--accent-physics-dim); color: var(--ink);">재생</button>
+            <button class="btn-mini" id="btn-sim-pause" type="button">일시정지</button>
+            <button class="btn-mini" id="btn-sim-reset" type="button">초기화</button>
+          </div>
+        </div>
+
       </div>
     </div>
   </section>
 
   <section class="wrap notes-grid">
     <div class="panel">
-      <h3>개념 설명 (자리)</h3>
-      <p>이 영역에 해당 개념에 대한 설명 텍스트를 작성합니다.</p>
+      <h3>실시간 측정 데이터</h3>
+      <div class="data-box">
+        <div class="data-grid">
+          <div class="data-row"><span class="data-label">매질 1 굴절률 (n₁)</span><span class="data-value" id="data-n1">1.0003</span></div>
+          <div class="data-row"><span class="data-label">매질 2 굴절률 (n₂)</span><span class="data-value" id="data-n2">1.3330</span></div>
+          <div class="data-row"><span class="data-label">입사각 (θ₁)</span><span class="data-value" id="data-theta1">45.0°</span></div>
+          <div class="data-row"><span class="data-label">굴절각 (θ₂)</span><span class="data-value" id="data-theta2">32.1°</span></div>
+          <div class="data-row"><span class="data-label">임계각 (θ_c)</span><span class="data-value" id="data-thetac">None</span></div>
+          <div class="data-row"><span class="data-label">반사각 (θ_r)</span><span class="data-value" id="data-thetar">None</span></div>
+        </div>
+      </div>
+      <p id="system-status" style="font-size: 0.85rem; color: var(--ink-muted);">상태: 정상 전파 중</p>
     </div>
+
     <div class="panel">
-      <h3>관련 수식 (자리)</h3>
-      <div class="formula-placeholder">수식 · 공식이 들어갈 자리</div>
+      <h3>스넬의 법칙 실시간 수식 대입</h3>
+      <div style="font-size: 1.1rem; text-align: center; margin-bottom: 12px; font-family: var(--font-mono); color: var(--accent-physics);">
+        n₁ · sin(θ₁) = n₂ · sin(θ₂)
+      </div>
+      <div class="dynamic-formula-area" id="formula-dynamic-view"></div>
     </div>
   </section>
 
   <div class="wrap">
     <a class="back-link" href="../../physics.html">&larr; 물리학 목록으로</a>
   </div>
-
-  <section class="wrap">
-    <div class="dev-note">
-      담당자 안내: 시각화 로직은 <code>../../assets/js/pages/refraction.js</code>에 작성하고, 아래 스크립트 태그로 불러옵니다.
-      DOM 구조(<code>#sim-stage</code>, <code>#sim-controls</code>)는 다른 페이지와 통일되어 있으니 id는 유지해 주세요.
-    </div>
-  </section>
 </main>
 
 <footer class="site-footer">
-  <div class="wrap">교과 개념 시각화 플랫폼 · 팀 프로젝트 틀 (HTML/CSS/JS, GitHub Pages)</div>
+  <div class="wrap">교과 개념 시각화 플랫폼 · 팀 프로젝트 공용 틀</div>
 </footer>
 
 <script src="../../assets/js/main.js"></script>
