@@ -33,6 +33,25 @@
   }
   .pc-readout .pc-x { color: var(--accent-math); }
   .pc-readout .pc-y { color: var(--accent-physics); }
+  .pc-domain-note {
+    font-size: 0.78rem;
+    color: var(--accent-physics);
+    margin: 8px 0 0;
+    line-height: 1.5;
+  }
+  .pc-help {
+    white-space: pre-line;
+    line-height: 1.7;
+    font-size: 0.82rem;
+  }
+  .pc-help strong {
+    display: block;
+    margin-top: 10px;
+    color: var(--accent-math);
+    font-family: var(--font-body);
+    font-size: 0.85rem;
+  }
+  .pc-help-note { color: var(--ink-muted); font-size: 0.78rem; }
   #pc-canvas { touch-action: none; }
 </style>
 </head>
@@ -95,13 +114,17 @@
           <select id="pc-fn-y" class="pc-select"></select>
         </div>
         <div class="control-group">
-          <label for="pc-t-slider">매개변수 t (0 ~ 2π)</label>
+          <label for="pc-t-slider">매개변수 t</label>
           <input type="range" id="pc-t-slider" min="0" max="6.283185307179586" step="0.0015" value="1.2" style="width:100%;">
           <div class="pc-t-scale">
-            <span>0</span>
+            <span id="pc-t-min-label">0</span>
             <span id="pc-t-value">t = 1.200</span>
-            <span>2π</span>
+            <span id="pc-t-max-label">2π</span>
           </div>
+          <p id="pc-domain-note" class="pc-domain-note" hidden>
+            선택한 함수에 로그가 포함되어 있어 t는 0보다 큰 값에서만 정의됩니다.
+            안전을 위해 t의 최소값을 0.1로 자동 제한했습니다.
+          </p>
         </div>
         <div class="control-group">
           <label>실행 제어</label>
@@ -114,6 +137,17 @@
         <div class="control-group">
           <label>실시간 값 · P(x, y)와 미분</label>
           <div class="formula-placeholder pc-readout" id="pc-readout"></div>
+        </div>
+        <div class="control-group">
+          <label>개념 안내 · 매개변수 미분 공식</label>
+          <div class="formula-placeholder pc-help">
+            dy/dx = (dy/dt) / (dx/dt)   <span class="pc-help-note">(단, dx/dt ≠ 0)</span>
+
+            <strong>추천 탐구 미션</strong>
+            1. x(t) = cos(t), y(t) = sin(t)를 골라 원 위를 도는 점 P와 접선을 관찰해 보세요.
+            2. x(t)와 y(t)를 서로 바꿔보고, 곡선이 x = y 직선에 대해 어떻게 대칭되는지 확인해 보세요.
+            3. y(t) = ln(t)를 선택해 t가 0에 가까워질 때 dy/dt가 어떻게 커지는지 살펴보세요.
+          </div>
         </div>
       </div>
     </div>
