@@ -19,7 +19,6 @@ pages/
     induction.html               전자기 유도 (자석에 의한 자기장 + 전자기 유도 통합)
     refraction.html             굴절과 스넬의 법칙
     interference.html           간섭과 회절
-    doppler.html                도플러 효과
 assets/
   css/style.css                 공통 스타일 (전체 공용, 수정 시 팀원과 상의)
   js/main.js                    공통 스크립트 (내비게이션 등)
