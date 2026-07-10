@@ -5,6 +5,42 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>급수와 정적분의 관계 | 개념 실험실</title>
 <link rel="stylesheet" href="../../assets/css/style.css">
+<style>
+  /* 이 페이지 전용 보조 스타일입니다. 새 색상을 만들지 않고
+     style.css에 정의된 CSS 변수(--accent-math, --border, --ink 등)만 사용합니다. */
+  #sim-stage {
+    padding: 0;
+    overflow: hidden;
+  }
+  #sim-stage canvas {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    display: block;
+    border-radius: 8px;
+  }
+  .fn-buttons,
+  .sum-buttons {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .btn-mini.is-active {
+    border-color: var(--accent-math);
+    color: var(--ink);
+    background: rgba(94, 234, 212, 0.12);
+  }
+  #nSlider {
+    width: 100%;
+    accent-color: var(--accent-math);
+    margin-top: 4px;
+  }
+  .value-readout {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--ink-muted);
+    margin-top: 6px;
+  }
+</style>
 </head>
 <body>
 
@@ -21,7 +57,7 @@
     <nav class="nav-links" id="navLinks">
       <a href="../../index.html">홈</a>
       <a href="../../math.html" aria-current="page">수학</a>
-      <a href="../../physics.html" >물리학</a>
+      <a href="../../physics.html">물리학</a>
       <a href="https://github.com/" target="_blank" rel="noopener">GitHub 저장소</a>
     </nav>
     <button class="nav-toggle" aria-label="메뉴 열기" aria-expanded="false">☰</button>
@@ -36,11 +72,11 @@
   </p>
 
   <section class="wrap sim-header">
-    <p class="eyebrow ">MATH</p>
+    <p class="eyebrow">MATH</p>
     <h1>급수와 정적분의 관계</h1>
     <p class="desc">구간을 n개로 나눈 리만 합에서 n을 무한대로 보내는 과정을 시각화합니다.</p>
     <div class="status-row">
-      <span class="badge badge-open">틀 준비됨</span>
+      <span class="badge badge-open">구현됨</span>
       <span class="badge">담당자: 미배정</span>
     </div>
   </section>
@@ -48,8 +84,8 @@
   <section class="wrap sim-layout">
     <div class="panel">
       <p class="panel-label">시각화 영역 · #sim-stage</p>
-      <div class="stage-placeholder" id="sim-stage">
-        여기에 급수와 정적분의 관계 시뮬레이션 캔버스/SVG가 들어갑니다
+      <div id="sim-stage">
+        <canvas id="simCanvas" role="img" aria-label="선택한 함수에 대한 리만 합 직사각형과 곡선 시각화"></canvas>
       </div>
     </div>
 
@@ -57,20 +93,36 @@
       <p class="panel-label">컨트롤 패널 · #sim-controls</p>
       <div id="sim-controls">
         <div class="control-group">
-          <label>매개변수 1 (예시)</label>
-          <div class="control-fake-slider"></div>
+          <label>함수 선택</label>
+          <div class="fn-buttons" role="group" aria-label="함수 선택">
+            <button class="btn-mini is-active" type="button" data-fn="cubic" aria-pressed="true">삼차함수</button>
+            <button class="btn-mini" type="button" data-fn="exp" aria-pressed="false">지수함수</button>
+            <button class="btn-mini" type="button" data-fn="trig" aria-pressed="false">삼각함수</button>
+          </div>
         </div>
+
         <div class="control-group">
-          <label>매개변수 2 (예시)</label>
-          <div class="control-fake-slider"></div>
+          <label for="nSlider">분할 개수 n = <span id="nValue">4</span></label>
+          <input type="range" id="nSlider" min="1" max="200" step="1" value="4">
         </div>
+
+        <div class="control-group">
+          <label>리만 합 종류</label>
+          <div class="sum-buttons" role="group" aria-label="리만 합 종류">
+            <button class="btn-mini" type="button" data-sum="left" aria-pressed="false">왼쪽 합</button>
+            <button class="btn-mini is-active" type="button" data-sum="mid" aria-pressed="true">중점 합</button>
+            <button class="btn-mini" type="button" data-sum="right" aria-pressed="false">오른쪽 합</button>
+          </div>
+        </div>
+
         <div class="control-group">
           <label>실행 제어</label>
           <div class="control-fake-buttons">
-            <button class="btn-mini" type="button">재생</button>
-            <button class="btn-mini" type="button">일시정지</button>
-            <button class="btn-mini" type="button">초기화</button>
+            <button class="btn-mini" type="button" id="playBtn">재생</button>
+            <button class="btn-mini" type="button" id="pauseBtn">일시정지</button>
+            <button class="btn-mini" type="button" id="resetBtn">초기화</button>
           </div>
+          <p class="value-readout">재생을 누르면 n이 서서히 커지며 직사각형이 촘촘해지는 과정을 자동으로 보여줍니다.</p>
         </div>
       </div>
     </div>
@@ -78,12 +130,23 @@
 
   <section class="wrap notes-grid">
     <div class="panel">
-      <h3>개념 설명 (자리)</h3>
-      <p>이 영역에 해당 개념에 대한 설명 텍스트를 작성합니다.</p>
+      <h3>개념 설명</h3>
+      <p>
+        구간 [a, b]를 n개의 소구간으로 나누고, 각 소구간 위에 세운 직사각형의 넓이를 모두 더한 것이
+        리만 합(Riemann sum)입니다. n을 키울수록(직사각형이 점점 촘촘해질수록) 리만 합은 정적분 값에
+        가까워지고, n &rarr; &infin; 일 때 정적분과 정확히 일치합니다.
+      </p>
+      <p>
+        왼쪽 합·오른쪽 합·중점 합은 각 소구간에서 직사각형의 높이를 정하는 기준점(왼쪽 끝, 오른쪽 끝,
+        중점)만 다를 뿐이며, n이 충분히 커지면 세 방법 모두 같은 값(정적분)으로 수렴합니다.
+      </p>
     </div>
     <div class="panel">
-      <h3>관련 수식 (자리)</h3>
-      <div class="formula-placeholder">수식 · 공식이 들어갈 자리</div>
+      <h3>관련 수식</h3>
+      <div class="formula-placeholder">
+        <div id="currentFormula">f(x) = 0.05x³ − 0.4x² + x + 3</div>
+        <div style="margin-top: 8px;">∫ f(x) dx ≈ Σ f(xᵢ*) · Δx, &nbsp; Δx = (b − a) / n</div>
+      </div>
     </div>
   </section>
 
