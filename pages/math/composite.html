@@ -5,6 +5,40 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>합성함수와 그 미분 | 개념 실험실</title>
 <link rel="stylesheet" href="../../assets/css/style.css">
+<style>
+  /* 시뮬레이션 내부 요소 스타일 최적화 */
+  #composite-canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    min-height: 400px;
+  }
+  .control-row {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 14px;
+  }
+  .control-row select, .control-row input[type="range"] {
+    width: 100%;
+    padding: 8px;
+    background: var(--panel-raised);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--ink);
+    font-family: var(--font-body);
+  }
+  .control-row input[type="range"] {
+    accent-color: var(--accent-math);
+    padding: 4px 0;
+  }
+  .value-display {
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--accent-math);
+    text-align: right;
+  }
+</style>
 </head>
 <body>
 
@@ -38,67 +72,103 @@
   <section class="wrap sim-header">
     <p class="eyebrow ">MATH</p>
     <h1>합성함수와 그 미분</h1>
-    <p class="desc">두 함수를 합성했을 때의 그래프와 연쇄법칙에 따른 미분을 함께 살펴봅니다.</p>
+    <p class="desc">속함수 $g(x)$의 치역이 겉함수 $f(x)$의 정의역이 되는 유기적인 연결 과정을 시각적으로 확인합니다.</p>
     <div class="status-row">
-      <span class="badge badge-open">틀 준비됨</span>
-      <span class="badge">담당자: 미배정</span>
+      <span class="badge badge-open">구현 완료</span>
+      <span class="badge">담당자: 완료</span>
     </div>
   </section>
 
   <section class="wrap sim-layout">
     <div class="panel">
       <p class="panel-label">시각화 영역 · #sim-stage</p>
-      <div class="stage-placeholder" id="sim-stage">
-        여기에 합성함수와 그 미분 시뮬레이션 캔버스/SVG가 들어갑니다
+      <div id="sim-stage" style="position: relative; width: 100%; aspect-ratio: 4/3; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; overflow: hidden;">
+        <canvas id="composite-canvas"></canvas>
       </div>
     </div>
 
     <div class="panel">
       <p class="panel-label">컨트롤 패널 · #sim-controls</p>
       <div id="sim-controls">
+        
         <div class="control-group">
-          <label>매개변수 1 (예시)</label>
-          <div class="control-fake-slider"></div>
-        </div>
-        <div class="control-group">
-          <label>매개변수 2 (예시)</label>
-          <div class="control-fake-slider"></div>
-        </div>
-        <div class="control-group">
-          <label>실행 제어</label>
-          <div class="control-fake-buttons">
-            <button class="btn-mini" type="button">재생</button>
-            <button class="btn-mini" type="button">일시정지</button>
-            <button class="btn-mini" type="button">초기화</button>
+          <label>정의역 입력값 조작 ($x$)</label>
+          <div class="control-row">
+            <input type="range" id="param-x" min="-2" max="2" step="0.01" value="0.5">
+            <div class="value-display">x = <span id="val-x">0.50</span></div>
           </div>
         </div>
+
+        <div class="control-group">
+          <label>속함수 $g(x)$ 선택</label>
+          <div class="control-row">
+            <select id="func-g">
+              <option value="sin">g(x) = sin(x)</option>
+              <option value="linear">g(x) = 0.5x + 0.3</option>
+              <option value="quad">g(x) = 0.5x² - 0.5</option>
+              <option value="cubic">g(x) = 0.3x³ - 0.2x</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="control-group">
+          <label>겉함수 $f(x)$ 선택</label>
+          <div class="control-row">
+            <select id="func-f">
+              <option value="quad">f(x) = x² - 0.5</option>
+              <option value="linear">f(x) = 0.8x</option>
+              <option value="cos">f(x) = cos(x)</option>
+              <option value="cubic">f(x) = 0.5x³ - 0.5x</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="control-group" style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border);">
+          <label style="font-weight: 600; color: var(--ink);">실시간 연산 결과</label>
+          <div style="font-family: var(--font-mono); font-size: 0.9rem; display: flex; flex-direction: column; gap: 6px; margin-top: 8px;">
+            <div>g(x) = <span id="res-g" style="color: var(--accent-math);">0.00</span></div>
+            <div>f(g(x)) = <span id="res-fg" style="color: var(--accent-physics);">0.00</span></div>
+          </div>
+        </div>
+
       </div>
     </div>
   </section>
 
   <section class="wrap notes-grid">
     <div class="panel">
-      <h3>개념 설명 (자리)</h3>
-      <p>이 영역에 해당 개념에 대한 설명 텍스트를 작성합니다.</p>
+      <h3>합성함수의 기하학적 배치 원리</h3>
+      <p>좌측 시뮬레이터는 두 함수의 인과관계를 직관적으로 보여주기 위해 다음과 같이 배치되어 있습니다.</p>
+      <ul style="margin: 8px 0 0; padding-left: 20px; color: var(--ink-muted); font-size: 0.9rem;">
+        <li><b>좌측 하단:</b> 속함수 $g(x)$의 평면입니다. $y$축이 오른쪽을 향하도록 시계방향 회전되어 있습니다.</li>
+        <li><b>좌측 상단:</b> 겉함수 $f(x)$의 표준 평면입니다. 속함수의 결과값($y$축)이 그대로 겉함수의 입력값($x$축)으로 수직 연결됩니다.</li>
+        <li><b>우측 상단:</b> 최종 합성함수 $(f \circ g)(x)$의 평면입니다. 처음 입력한 $x$와 최종 결과 $f(g(x))$를 직접 매핑합니다.</li>
+      </ul>
     </div>
     <div class="panel">
-      <h3>관련 수식 (자리)</h3>
-      <div class="formula-placeholder">수식 · 공식이 들어갈 자리</div>
+      <h3>관련 수식 및 미분 (연쇄법칙)</h3>
+      <div class="formula-placeholder" style="line-height: 1.8;">
+        • 합성함수 정의: $(f \circ g)(x) = f(g(x))$<br>
+        • 연쇄법칙 (Chain Rule):<br>
+        <span style="color: var(--accent-math); font-size: 0.95rem; display: block; margin: 4px 0;">$$\frac{dy}{dx} = \frac{dy}{du} \cdot \frac{du}{dx} = f'(g(x)) \cdot g'(x)$$</span>
+        속함수의 변화율과 겉함수의 변화율이 곱해져 전체 변화율을 구성합니다.
+      </div>
     </div>
   </section>
 
   <div class="wrap">
     <a class="back-link" href="../../math.html">&larr; 수학 목록으로</a>
   </div>
-
-  <section class="wrap">
-    <div class="dev-note">
-      담당자 안내: 시각화 로직은 <code>../../assets/js/pages/composite.js</code>에 작성하고, 아래 스크립트 태그로 불러옵니다.
-      DOM 구조(<code>#sim-stage</code>, <code>#sim-controls</code>)는 다른 페이지와 통일되어 있으니 id는 유지해 주세요.
-    </div>
-  </section>
 </main>
 
+<footer class="site-footer">
+  <div class="wrap">교과 개념 시각화 플랫폼 · 팀 프로젝트 틀 (HTML/CSS/JS, GitHub Pages)</div>
+</footer>
+
+<script src="../../assets/js/main.js"></script>
+<script src="../../assets/js/pages/composite.js"></script>
+</body>
+</html>
 <footer class="site-footer">
   <div class="wrap">교과 개념 시각화 플랫폼 · 팀 프로젝트 틀 (HTML/CSS/JS, GitHub Pages)</div>
 </footer>
