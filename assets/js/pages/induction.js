@@ -11,17 +11,21 @@
 //     전류  I   ∝ (자석 세기) × (각속도 ω) × sin(θ)
 //   → 코일이 회전하지 않으면(ω = 0) 자기장 속에 있어도 전류는 0.
 //
-// [② 움직이는 자석] (구현 예정)
+// [② 움직이는 자석] (구현됨)
 //   - #indStageMovingMagnet : 정지한 코일에 자석이 가까워지고 멀어지는 장면
-//   - #indControlsMovingMagnet : 자석 속도 / 자석-코일 거리 컨트롤
-//   담당자는 이 파일의 "② 움직이는 자석" 섹션에 이어서 구현하면 됩니다.
-//   id는 indMove* 접두사를 권장합니다 (예: indMoveSceneCanvas).
+//   - #indControlsMovingMagnet : 자석 이동 속도 / 자석 세기 / 코일 감은 횟수 컨트롤
+//   물리 모델(단순화, 쌍극자 자기장 근사):
+//     자기장   B(x) = 세기 / (1 + (x/k)²)^1.5   (x: 자석-코일 중심 거리, k: 감쇠 폭)
+//     자속     Φ(x) = N·B(x)
+//     기전력   ε = -dΦ/dt = -N·(dB/dx)·v         (v: 자석의 순간 속도, 부호 있음)
+//   → 자석이 멈춰 있으면(v = 0) 코일 바로 옆에 있어도 전류는 0.
+//   → 코일에 가까워질 때와 멀어질 때 dB/dx의 부호가 반대라 전류 방향도 반대가 됨.
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', () => {
   initModeSwitch();
   initRotateScenario();
-  // TODO: initMovingMagnetScenario(); — ② 구현 시 여기서 초기화 함수를 호출하세요.
+  initMovingMagnetScenario();
 });
 
 // ------------------------------------------------------------
@@ -491,11 +495,457 @@ function initRotateScenario() {
 }
 
 // ------------------------------------------------------------
-// ② 움직이는 자석 (구현 예정)
-// 담당자는 여기에 initMovingMagnetScenario() 함수를 작성하고,
-// 위쪽 DOMContentLoaded 안의 TODO 주석에서 호출을 활성화하세요.
-// 참고할 element id: indStageMovingMagnet, indControlsMovingMagnet
 // ------------------------------------------------------------
-// function initMovingMagnetScenario() {
-//   // TODO: 정지한 코일 + 움직이는 자석 시뮬레이션 구현
-// }
+// ② 움직이는 자석 (구현됨)
+// ------------------------------------------------------------
+function initMovingMagnetScenario() {
+  const sceneCanvas = document.getElementById('indMoveSceneCanvas');
+  const graphCanvas = document.getElementById('indMoveGraphCanvas');
+  if (!sceneCanvas || !graphCanvas) return; // 이 페이지가 아니면 종료
+
+  const sceneCtx = sceneCanvas.getContext('2d');
+  const graphCtx = graphCanvas.getContext('2d');
+
+  const speedInput = document.getElementById('indMoveSpeed');
+  const speedValueEl = document.getElementById('indMoveSpeedValue');
+  const strengthInput = document.getElementById('indMoveStrength');
+  const strengthValueEl = document.getElementById('indMoveStrengthValue');
+  const turnsInput = document.getElementById('indMoveTurns');
+  const turnsValueEl = document.getElementById('indMoveTurnsValue');
+  const playBtn = document.getElementById('indMovePlayBtn');
+  const resetBtn = document.getElementById('indMoveResetBtn');
+
+  const posReadout = document.getElementById('indMovePosReadout');
+  const currentReadout = document.getElementById('indMoveCurrentReadout');
+  const dirReadout = document.getElementById('indMoveDirReadout');
+
+  // ---------- 상태 ----------
+  // pos: 코일 중심(0)을 기준으로 한 자석의 위치. 트랙 범위는 -TRACK_HALF ~ +TRACK_HALF.
+  const TRACK_HALF = 10; // 임의 단위
+  const FALLOFF_K = 2.2; // 자기장이 얼마나 빨리 약해지는지 (작을수록 급격히 약해짐)
+
+  const state = {
+    pos: -TRACK_HALF * 0.6,
+    dir: 1, // 자동 재생 시 이동 방향 (+1: 오른쪽/코일 쪽, -1: 왼쪽)
+    speed: parseFloat(speedInput.value), // 단위/s (항상 양수, 방향은 dir이 결정)
+    strength: parseFloat(strengthInput.value),
+    turns: parseFloat(turnsInput.value),
+    playing: true,
+    dragging: false,
+    dragVelocity: 0,
+    lastPointerX: 0,
+    lastPointerT: 0,
+    current: 0,
+    elapsed: 0,
+  };
+
+  const CURRENT_SCALE = 0.35;
+  const GRAPH_WINDOW = 8;
+  const GRAPH_MAX_CURRENT = 4;
+  const history = [];
+
+  const rootStyle = getComputedStyle(document.documentElement);
+  const cssVar = (name) => rootStyle.getPropertyValue(name).trim();
+  const colors = {
+    physics: cssVar('--accent-physics') || '#f2b84b',
+    physicsDim: cssVar('--accent-physics-dim') || '#8a6a2c',
+    ink: cssVar('--ink') || '#eaf0fb',
+    inkMuted: cssVar('--ink-muted') || '#8ca0c4',
+    border: cssVar('--border') || '#23324f',
+    panelRaised: cssVar('--panel-raised') || '#16223c',
+    bgGrid: cssVar('--bg-grid') || '#16213a',
+    fontMono: (cssVar('--font-mono') || 'monospace').split(',')[0].replace(/['"]/g, '').trim(),
+  };
+
+  function fitCanvas(canvas, cssHeight) {
+    const rect = canvas.getBoundingClientRect();
+    const dpr = window.devicePixelRatio || 1;
+    const cssWidth = rect.width || canvas.parentElement.clientWidth || 640;
+    const h = cssHeight || cssWidth * (canvas === sceneCanvas ? 0.42 : 0.19);
+    canvas.style.height = h + 'px';
+    canvas.width = Math.round(cssWidth * dpr);
+    canvas.height = Math.round(h * dpr);
+    const ctx = canvas.getContext('2d');
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    return { w: cssWidth, h };
+  }
+
+  let sceneSize = { w: 640, h: 260 };
+  let graphSize = { w: 640, h: 120 };
+
+  function resizeAll() {
+    sceneSize = fitCanvas(sceneCanvas);
+    graphSize = fitCanvas(graphCanvas, 120);
+    drawScene();
+    drawGraph();
+  }
+
+  if (window.ResizeObserver) {
+    const ro = new ResizeObserver(() => resizeAll());
+    ro.observe(sceneCanvas.parentElement);
+  } else {
+    window.addEventListener('resize', resizeAll);
+  }
+
+  // ---------- 물리 모델 ----------
+  // 쌍극자 자기장을 단순화한 완만한 종형(bell-shape) 감쇠 함수.
+  function fieldB(x) {
+    return state.strength / Math.pow(1 + (x / FALLOFF_K) * (x / FALLOFF_K), 1.5);
+  }
+  // dB/dx (해석적 미분)
+  function fieldBDeriv(x) {
+    const denom = Math.pow(1 + (x / FALLOFF_K) * (x / FALLOFF_K), 2.5);
+    return (-3 * state.strength * x) / (FALLOFF_K * FALLOFF_K * denom);
+  }
+  function computeCurrent(velocity) {
+    return -state.turns * fieldBDeriv(state.pos) * velocity * CURRENT_SCALE;
+  }
+
+  function roundRect(ctx, x, y, w, h, r) {
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+
+  // ---------- 씬(트랙 + 자석 + 코일 + 전류계) 그리기 ----------
+  function drawScene() {
+    const { w, h } = sceneSize;
+    const ctx = sceneCtx;
+    ctx.clearRect(0, 0, w, h);
+
+    const trackY = h * 0.38;
+    const trackPad = 40;
+    const trackW = w - trackPad * 2;
+    const pxPerUnit = trackW / (TRACK_HALF * 2);
+    const centerX = w / 2;
+
+    function toPx(unitX) { return centerX + unitX * pxPerUnit; }
+
+    // --- 트랙 ---
+    ctx.save();
+    ctx.strokeStyle = colors.border;
+    ctx.setLineDash([4, 5]);
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(trackPad, trackY);
+    ctx.lineTo(w - trackPad, trackY);
+    ctx.stroke();
+    ctx.restore();
+
+    // --- 자기장 세기를 은은한 배경 띠로 표현 ---
+    const B_now = fieldB(state.pos);
+    ctx.save();
+    const glowR = Math.max(18, 60 * Math.min(1, B_now / Math.max(0.01, state.strength)));
+    const grad = ctx.createRadialGradient(toPx(0), trackY, 4, toPx(0), trackY, glowR);
+    grad.addColorStop(0, colors.physics + '33');
+    grad.addColorStop(1, colors.physics + '00');
+    ctx.fillStyle = grad;
+    ctx.fillRect(toPx(0) - glowR, trackY - glowR, glowR * 2, glowR * 2);
+    ctx.restore();
+
+    // --- 코일 (고정, 트랙 중앙) ---
+    const coilW = Math.max(30, w * 0.07);
+    const coilH = h * 0.34;
+    const coilX = centerX - coilW / 2;
+    const coilY = trackY - coilH / 2;
+
+    ctx.save();
+    ctx.fillStyle = colors.panelRaised;
+    ctx.strokeStyle = colors.border;
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, coilX, coilY, coilW, coilH, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    // 감은 횟수(N)를 시각적으로 표현 (최대 8개까지만 그려서 화면이 지저분해지지 않게 함)
+    const loopCount = Math.max(2, Math.min(8, Math.round(state.turns)));
+    ctx.strokeStyle = colors.physics;
+    ctx.lineWidth = 1.4;
+    ctx.globalAlpha = 0.85;
+    for (let i = 0; i < loopCount; i++) {
+      const ly = coilY + (coilH / (loopCount - 1 || 1)) * i;
+      ctx.beginPath();
+      ctx.ellipse(coilX + coilW / 2, ly, coilW / 2, 4, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.restore();
+
+    ctx.fillStyle = colors.inkMuted;
+    ctx.font = `600 11px ${colors.fontMono}, monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(`N=${Math.round(state.turns)}`, coilX + coilW / 2, coilY + coilH + 16);
+
+    // --- 자석 (이동) ---
+    const magnetW = Math.max(46, w * 0.11);
+    const magnetH = h * 0.18;
+    const magnetX = toPx(state.pos) - magnetW / 2;
+    const magnetY = trackY - magnetH / 2;
+
+    ctx.save();
+    ctx.fillStyle = colors.panelRaised;
+    ctx.strokeStyle = colors.border;
+    ctx.lineWidth = 1.5;
+    roundRect(ctx, magnetX, magnetY, magnetW, magnetH, 6);
+    ctx.fill();
+    ctx.stroke();
+
+    // N극이 코일(오른쪽 이동 방향)을 향하도록 오른쪽 절반을 포인트 컬러로 표시
+    const capW = magnetW * 0.45;
+    ctx.fillStyle = colors.physics;
+    roundRect(ctx, magnetX + magnetW - capW, magnetY, capW, magnetH, 6);
+    ctx.fill();
+
+    ctx.fillStyle = colors.ink;
+    ctx.font = `700 ${Math.max(11, magnetH * 0.45)}px ${colors.fontMono}, monospace`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('S', magnetX + magnetW * 0.27, magnetY + magnetH / 2);
+    ctx.fillStyle = '#06231f';
+    ctx.fillText('N', magnetX + magnetW - capW / 2, magnetY + magnetH / 2);
+    ctx.restore();
+
+    // --- 코일 -> 전류계 도선 ---
+    const meterX = centerX;
+    const meterY = h * 0.86;
+    const meterR = Math.max(24, h * 0.11);
+
+    ctx.save();
+    ctx.strokeStyle = colors.inkMuted;
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.moveTo(coilX + 6, coilY + coilH);
+    ctx.bezierCurveTo(coilX + 6, coilY + coilH + 24, meterX - meterR * 0.7, meterY - meterR * 0.9, meterX - meterR * 0.6, meterY - meterR * 0.15);
+    ctx.moveTo(coilX + coilW - 6, coilY + coilH);
+    ctx.bezierCurveTo(coilX + coilW - 6, coilY + coilH + 24, meterX + meterR * 0.7, meterY - meterR * 0.9, meterX + meterR * 0.6, meterY - meterR * 0.15);
+    ctx.stroke();
+    ctx.restore();
+
+    // --- 전류계(아날로그 게이지) ---
+    ctx.save();
+    ctx.beginPath();
+    ctx.arc(meterX, meterY, meterR, Math.PI, Math.PI * 2);
+    ctx.closePath();
+    ctx.fillStyle = colors.panelRaised;
+    ctx.fill();
+    ctx.strokeStyle = colors.border;
+    ctx.lineWidth = 1.5;
+    ctx.stroke();
+
+    ctx.strokeStyle = colors.inkMuted;
+    ctx.lineWidth = 1;
+    for (let i = -3; i <= 3; i++) {
+      const a = Math.PI + (Math.PI / 2) + (i / 3) * (Math.PI / 2.4);
+      const x1 = meterX + Math.cos(a) * meterR * 0.82;
+      const y1 = meterY + Math.sin(a) * meterR * 0.82;
+      const x2 = meterX + Math.cos(a) * meterR * 0.95;
+      const y2 = meterY + Math.sin(a) * meterR * 0.95;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+
+    const maxDeflect = Math.PI / 2.4;
+    const norm = Math.max(-1, Math.min(1, state.current / GRAPH_MAX_CURRENT));
+    const needleAngle = Math.PI + Math.PI / 2 + norm * maxDeflect;
+    ctx.strokeStyle = colors.physics;
+    ctx.lineWidth = 2.5;
+    ctx.beginPath();
+    ctx.moveTo(meterX, meterY);
+    ctx.lineTo(meterX + Math.cos(needleAngle) * meterR * 0.78, meterY + Math.sin(needleAngle) * meterR * 0.78);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.fillStyle = colors.inkMuted;
+    ctx.arc(meterX, meterY, 3, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = colors.inkMuted;
+    ctx.font = `600 11px ${colors.fontMono}, monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText('A', meterX, meterY - meterR * 0.35);
+    ctx.restore();
+  }
+
+  // ---------- 전류-시간 그래프 (회전 코일 페이지와 동일한 방식) ----------
+  function drawGraph() {
+    const { w, h } = graphSize;
+    const ctx = graphCtx;
+    ctx.clearRect(0, 0, w, h);
+
+    const midY = h / 2;
+    ctx.strokeStyle = colors.border;
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, midY);
+    ctx.lineTo(w, midY);
+    ctx.stroke();
+
+    ctx.strokeStyle = colors.bgGrid;
+    for (let i = 1; i < 8; i++) {
+      const gx = (w / 8) * i;
+      ctx.beginPath();
+      ctx.moveTo(gx, 0);
+      ctx.lineTo(gx, h);
+      ctx.stroke();
+    }
+
+    if (history.length < 2) return;
+
+    const tNow = state.elapsed;
+    const tMin = tNow - GRAPH_WINDOW;
+
+    ctx.strokeStyle = colors.physics;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    let started = false;
+    let lastX = 0, lastY = midY;
+    for (let i = 0; i < history.length; i++) {
+      const p = history[i];
+      if (p.t < tMin) continue;
+      const x = ((p.t - tMin) / GRAPH_WINDOW) * w;
+      const y = midY - (p.current / GRAPH_MAX_CURRENT) * (midY - 6);
+      if (!started) { ctx.moveTo(x, y); started = true; }
+      else ctx.lineTo(x, y);
+      lastX = x; lastY = y;
+    }
+    ctx.stroke();
+
+    ctx.fillStyle = colors.physics;
+    ctx.beginPath();
+    ctx.arc(lastX, lastY, 3.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  function updateReadouts(velocity) {
+    posReadout.textContent = state.pos.toFixed(1);
+    currentReadout.textContent = `${state.current.toFixed(2)} A`;
+
+    let dir = '정지';
+    if (Math.abs(velocity) > 0.01) {
+      dir = velocity > 0 ? '코일 쪽(→)' : '코일 반대쪽(←)';
+    }
+    dirReadout.textContent = dir;
+  }
+
+  // ---------- 애니메이션 루프 ----------
+  // 다른 상황(① 회전하는 코일)이 보이는 동안에는 계산을 건너뛰어 자원을 아낍니다.
+  let lastTs = null;
+  function tick(ts) {
+    if (lastTs == null) lastTs = ts;
+    const dt = Math.min(0.05, (ts - lastTs) / 1000);
+    lastTs = ts;
+
+    const isVisible = window.__indCurrentMode === 'moving-magnet';
+    if (isVisible) {
+      let velocity = 0;
+      if (state.dragging) {
+        velocity = state.dragVelocity;
+      } else if (state.playing) {
+        velocity = state.dir * state.speed;
+        state.pos += velocity * dt;
+        // 트랙 끝에 닿으면 방향을 반전 (자석이 왕복하며 가까워졌다 멀어짐을 반복)
+        if (state.pos > TRACK_HALF) { state.pos = TRACK_HALF; state.dir = -1; }
+        if (state.pos < -TRACK_HALF) { state.pos = -TRACK_HALF; state.dir = 1; }
+      }
+
+      state.current = computeCurrent(velocity);
+      state.elapsed += dt;
+
+      history.push({ t: state.elapsed, current: state.current });
+      const cutoff = state.elapsed - GRAPH_WINDOW - 1;
+      while (history.length && history[0].t < cutoff) history.shift();
+
+      drawScene();
+      drawGraph();
+      updateReadouts(velocity);
+    }
+
+    requestAnimationFrame(tick);
+  }
+
+  // ---------- 드래그로 자석 직접 이동 ----------
+  let wasPlayingBeforeDrag = true;
+
+  sceneCanvas.addEventListener('pointerdown', (evt) => {
+    state.dragging = true;
+    wasPlayingBeforeDrag = state.playing;
+    state.playing = false;
+    state.lastPointerX = evt.clientX;
+    state.lastPointerT = performance.now() / 1000;
+    sceneCanvas.setPointerCapture(evt.pointerId);
+  });
+
+  sceneCanvas.addEventListener('pointermove', (evt) => {
+    if (!state.dragging) return;
+    const now = performance.now() / 1000;
+    const dt = Math.max(0.001, now - state.lastPointerT);
+    const dx = evt.clientX - state.lastPointerX;
+    const trackPad = 40;
+    const trackW = sceneSize.w - trackPad * 2;
+    const pxPerUnit = trackW / (TRACK_HALF * 2);
+    const dUnit = dx / pxPerUnit;
+    state.pos = Math.max(-TRACK_HALF, Math.min(TRACK_HALF, state.pos + dUnit));
+    state.dragVelocity = dUnit / dt;
+    state.lastPointerX = evt.clientX;
+    state.lastPointerT = now;
+  });
+
+  function endDrag() {
+    if (!state.dragging) return;
+    state.dragging = false;
+    state.dragVelocity = 0;
+    state.playing = wasPlayingBeforeDrag;
+    playBtn.textContent = state.playing ? '일시정지' : '재생';
+    playBtn.classList.toggle('is-playing', state.playing);
+  }
+  sceneCanvas.addEventListener('pointerup', endDrag);
+  sceneCanvas.addEventListener('pointercancel', endDrag);
+  sceneCanvas.addEventListener('pointerleave', (evt) => {
+    if (evt.buttons === 0) endDrag();
+  });
+
+  // ---------- 컨트롤 이벤트 ----------
+  speedInput.addEventListener('input', () => {
+    state.speed = parseFloat(speedInput.value);
+    speedValueEl.textContent = `${state.speed}/s`;
+  });
+
+  strengthInput.addEventListener('input', () => {
+    state.strength = parseFloat(strengthInput.value);
+    strengthValueEl.textContent = `${state.strength.toFixed(1)}×`;
+  });
+
+  turnsInput.addEventListener('input', () => {
+    state.turns = parseFloat(turnsInput.value);
+    turnsValueEl.textContent = `${Math.round(state.turns)}회`;
+  });
+
+  playBtn.addEventListener('click', () => {
+    state.playing = !state.playing;
+    playBtn.textContent = state.playing ? '일시정지' : '재생';
+    playBtn.classList.toggle('is-playing', state.playing);
+  });
+
+  resetBtn.addEventListener('click', () => {
+    state.pos = -TRACK_HALF * 0.6;
+    state.dir = 1;
+    state.elapsed = 0;
+    state.current = 0;
+    history.length = 0;
+    state.playing = true;
+    playBtn.textContent = '일시정지';
+    playBtn.classList.add('is-playing');
+  });
+
+  // ---------- 초기화 ----------
+  speedValueEl.textContent = `${state.speed}/s`;
+  strengthValueEl.textContent = `${state.strength.toFixed(1)}×`;
+  turnsValueEl.textContent = `${Math.round(state.turns)}회`;
+  resizeAll();
+  requestAnimationFrame(tick);
+}
