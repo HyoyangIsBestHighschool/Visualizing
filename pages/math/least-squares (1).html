@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>최소제곱법 | 개념 실험실</title>
+<link rel="stylesheet" href="../../assets/css/style.css">
+<style>
+  /* 이 페이지 전용 보조 스타일 — style.css는 건드리지 않고,
+     기존 CSS 변수(--accent-math, --panel, --border, --ink 등)만 재사용합니다. */
+
+  .ls-canvas-box {
+    border: 1px dashed var(--border);
+    border-radius: 8px;
+    background:
+      linear-gradient(var(--bg-grid) 1px, transparent 1px),
+      linear-gradient(90deg, var(--bg-grid) 1px, transparent 1px);
+    background-size: 24px 24px;
+    padding: 10px;
+  }
+
+  .ls-canvas-box canvas {
+    width: 100%;
+    height: 340px;
+    display: block;
+    border-radius: 6px;
+  }
+
+  .ls-readouts {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 8px;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+    color: var(--ink);
+    background: var(--panel-raised);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 14px;
+    margin-bottom: 14px;
+    transition: border-color 0.2s ease;
+  }
+
+  .ls-readouts.is-close {
+    border-color: var(--accent-math);
+  }
+
+  .ls-readouts span.label {
+    color: var(--ink-muted);
+    margin-right: 6px;
+  }
+
+  .ls-readouts span.eq {
+    color: var(--accent-math);
+  }
+
+  #ls-ssr-value {
+    transition: color 0.2s ease;
+  }
+
+  #ls-ssr-value.is-close {
+    color: var(--accent-math);
+    font-weight: 600;
+  }
+
+  .ls-feedback {
+    font-family: var(--font-body);
+    font-size: 0.82rem;
+    color: var(--accent-math);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    min-height: 1.1em;
+  }
+
+  .ls-feedback.show {
+    opacity: 1;
+  }
+
+  .ls-legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--ink-muted);
+    margin: 10px 0 0;
+  }
+
+  .ls-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .ls-legend i {
+    display: inline-block;
+    width: 16px;
+    height: 2px;
+    background: var(--accent-math);
+  }
+
+  .ls-legend i.optimal {
+    background: repeating-linear-gradient(
+      90deg,
+      var(--accent-physics) 0 6px,
+      transparent 6px 10px
+    );
+  }
+
+  input[type="range"].ls-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 100%;
+    height: 4px;
+    background: var(--border);
+    border-radius: 999px;
+    accent-color: var(--accent-math);
+  }
+
+  input[type="range"].ls-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--accent-math);
+    cursor: pointer;
+  }
+
+  input[type="range"].ls-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border: none;
+    border-radius: 50%;
+    background: var(--accent-math);
+    cursor: pointer;
+  }
+
+  .ls-value {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    color: var(--accent-math);
+  }
+
+  .btn-mini.is-active {
+    border-color: var(--accent-physics);
+    color: var(--accent-physics);
+  }
+
+  .ls-mission {
+    margin: 0;
+    padding-left: 18px;
+  }
+
+  .ls-mission li {
+    margin-bottom: 8px;
+  }
+
+  .ls-mission li:last-child {
+    margin-bottom: 0;
+  }
+</style>
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap nav">
+    <a class="brand" href="../../index.html">
+      <svg class="brand-mark" viewBox="0 0 28 28" xmlns="http://www.w3.org/2000/svg">
+        <line x1="3" y1="24" x2="25" y2="24" stroke="#8ca0c4" stroke-width="1.4"/>
+        <line x1="4" y1="25" x2="4" y2="3" stroke="#8ca0c4" stroke-width="1.4"/>
+        <path d="M4 20 C10 6, 16 26, 24 8" fill="none" stroke="#5eead4" stroke-width="2" stroke-linecap="round"/>
+      </svg>
+      개념 실험실
+    </a>
+    <nav class="nav-links" id="navLinks">
+      <a href="../../index.html">홈</a>
+      <a href="../../math.html" aria-current="page">수학</a>
+      <a href="../../physics.html">물리학</a>
+      <a href="https://github.com/" target="_blank" rel="noopener">GitHub 저장소</a>
+    </nav>
+    <button class="nav-toggle" aria-label="메뉴 열기" aria-expanded="false">☰</button>
+  </div>
+</header>
+
+<main>
+  <p class="wrap breadcrumb">
+    <a href="../../index.html">홈</a><span class="sep">/</span>
+    <a href="../../math.html">수학</a><span class="sep">/</span>
+    최소제곱법
+  </p>
+
+  <section class="wrap sim-header">
+    <p class="eyebrow">MATH</p>
+    <h1>최소제곱법</h1>
+    <p class="desc">흩어진 데이터 점들에 가장 가까운 직선을 찾는 방법을 시각화합니다. 직선을 직접 움직여보면서 각 점까지의 오차(잔차)와, 그 제곱의 합이 어떻게 변하는지 확인해 보세요.</p>
+    <div class="status-row">
+      <span class="badge badge-open">구현됨</span>
+      <span class="badge">담당자: 미배정</span>
+    </div>
+  </section>
+
+  <section class="wrap sim-layout">
+    <div class="panel">
+      <p class="panel-label">시각화 영역 · #sim-stage</p>
+
+      <div class="ls-readouts" id="ls-readout">
+        <div><span class="label">직선의 방정식</span><span class="eq" id="ls-eq">y = 1.00x + 0.00</span></div>
+        <div><span class="label">잔차 제곱합 (SSR)</span><span id="ls-ssr-value">0.00</span></div>
+        <div class="ls-feedback" id="ls-feedback">정답에 가까워졌습니다!</div>
+      </div>
+
+      <div class="ls-canvas-box" id="sim-stage">
+        <canvas id="ls-canvas"></canvas>
+        <div class="ls-legend">
+          <span><i></i> 내가 움직이는 직선</span>
+          <span><i class="optimal"></i> 최소제곱법 정답선</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <p class="panel-label">컨트롤 패널 · #sim-controls</p>
+      <div id="sim-controls">
+        <div class="control-group">
+          <label for="ls-slope">기울기 m <span class="ls-value" id="ls-slope-value">1.00</span></label>
+          <input type="range" class="ls-slider" id="ls-slope" min="-1" max="3" step="0.01" value="1">
+        </div>
+        <div class="control-group">
+          <label for="ls-intercept">절편 b <span class="ls-value" id="ls-intercept-value">0.00</span></label>
+          <input type="range" class="ls-slider" id="ls-intercept" min="-5" max="10" step="0.05" value="0">
+        </div>
+        <div class="control-group">
+          <label>실행 제어</label>
+          <div class="control-fake-buttons">
+            <button class="btn-mini" type="button" id="ls-btn-regen">데이터 새로 생성</button>
+            <button class="btn-mini" type="button" id="ls-btn-optimal">선형회귀 정답선 보기</button>
+            <button class="btn-mini" type="button" id="ls-btn-reset">초기화</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="wrap notes-grid">
+    <div class="panel">
+      <h3>개념 설명</h3>
+      <p>
+        최소제곱법(least squares method)은 흩어진 데이터 점들을 가장 잘 설명하는 직선
+        <code>y = mx + b</code>를 찾는 방법입니다. 각 데이터 점(실제값)에서 직선(예측값)까지
+        수직으로 이어지는 점선이 <strong>잔차(residual)</strong>이며, 이 잔차를 제곱해서 모두
+        더한 값이 <strong>잔차 제곱합(SSR, Sum of Squared Residuals)</strong>입니다. SSR이
+        작을수록 직선이 데이터를 더 잘 설명한다는 뜻입니다.
+      </p>
+      <p style="margin-top: 10px;">
+        슬라이더로 직선을 직접 움직여 SSR을 최소로 만들어 보세요. 값이 최적값에 가까워지면
+        SSR 숫자와 패널 테두리 색이 강조되고 "정답에 가까워졌습니다!" 메시지가 나타납니다.
+        '선형회귀 정답선 보기' 버튼을 누르면 컴퓨터가 최소제곱법 공식으로 계산한 진짜
+        최적의 회귀선이 점선으로 겹쳐 나타나, 내가 맞춘 직선과 직접 비교할 수 있습니다.
+      </p>
+      <p style="margin-top: 10px;"><strong>탐구 미션</strong></p>
+      <ol class="ls-mission">
+        <li>슬라이더만으로 SSR을 최대한 작게 만들어 보세요. "정답에 가까워졌습니다!" 메시지가 뜨나요?</li>
+        <li>'선형회귀 정답선 보기'를 눌러 내가 만든 직선과 컴퓨터의 정답선을 비교해 보세요. 얼마나 가까웠나요?</li>
+        <li>일부러 직선을 데이터에서 멀리 떨어뜨려 보세요. 잔차 점선과 SSR 숫자가 어떻게 달라지나요?</li>
+      </ol>
+    </div>
+    <div class="panel">
+      <h3>관련 수식</h3>
+      <div class="formula-placeholder">
+        잔차(residual):<br>
+        eᵢ = yᵢ − (m·xᵢ + b)<br><br>
+        잔차 제곱합(SSR):<br>
+        S(m, b) = Σ (yᵢ − (m·xᵢ + b))²<br><br>
+        최적해(닫힌 형태 해):<br>
+        m* = Σ(xᵢ − x̄)(yᵢ − ȳ) / Σ(xᵢ − x̄)²<br>
+        b* = ȳ − m*·x̄
+      </div>
+    </div>
+  </section>
+
+  <div class="wrap">
+    <a class="back-link" href="../../math.html">&larr; 수학 목록으로</a>
+  </div>
+
+  <section class="wrap">
+    <div class="dev-note">
+      담당자 안내: 시각화 로직은 <code>../../assets/js/pages/least-squares.js</code>에 작성되어 있습니다.
+      DOM 구조(<code>#sim-stage</code>, <code>#sim-controls</code>)는 다른 페이지와 통일되어 있으니 id는 유지해 주세요.
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap">교과 개념 시각화 플랫폼 · 팀 프로젝트 틀 (HTML/CSS/JS, GitHub Pages)</div>
+</footer>
+
+<script src="../../assets/js/main.js"></script>
+<script src="../../assets/js/pages/least-squares.js"></script>
+</body>
+</html>
