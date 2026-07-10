@@ -56,6 +56,8 @@
   }
   #indRotateSceneCanvas { cursor: grab; touch-action: none; }
   #indRotateSceneCanvas:active { cursor: grabbing; }
+  #indMoveSceneCanvas { cursor: grab; touch-action: none; }
+  #indMoveSceneCanvas:active { cursor: grabbing; }
 
   .ind-readout {
     display: flex;
@@ -107,6 +109,10 @@
     border-color: var(--accent-physics);
     color: var(--accent-physics);
   }
+  #indMovePlayBtn.is-playing {
+    border-color: var(--accent-physics);
+    color: var(--accent-physics);
+  }
 </style>
 </head>
 <body>
@@ -143,7 +149,7 @@
     <h1>전자기 유도</h1>
     <p class="desc">자기 선속이 변할 때 전류가 유도되는 두 가지 대표 상황을 비교합니다. 코일이 자석 사이에서 회전하는 경우와, 코일은 가만히 있고 자석이 움직이는 경우 — 두 경우 모두 결국 같은 원리(자기 선속의 변화)로 설명됩니다.</p>
     <div class="status-row">
-      <span class="badge badge-open">일부 구현됨</span>
+      <span class="badge badge-open">구현됨</span>
       <span class="badge">담당자: 미배정</span>
     </div>
   </section>
@@ -180,10 +186,24 @@
           <p class="ind-hint">Tip. 코일을 마우스(또는 손가락)로 직접 드래그해서 돌려볼 수도 있어요. 빠르게 돌릴수록 더 큰 전류가 유도됩니다.</p>
         </div>
 
-        <!-- ② 움직이는 자석 (구현 예정) -->
-        <div id="indStageMovingMagnet" class="stage-placeholder" style="display: none;">
-          여기에 "정지한 코일 + 움직이는 자석" 시뮬레이션 캔버스가 들어갑니다<br>
-          (자석이 코일에 가까워지고 멀어짐에 따라 유도 전류의 방향과 크기가 바뀌는 모습)
+        <!-- ② 움직이는 자석 (구현됨) -->
+        <div id="indStageMovingMagnet" class="ind-scene-panel" style="display: none;">
+          <div class="ind-scene-wrap">
+            <canvas id="indMoveSceneCanvas" class="ind-canvas" width="640" height="280" aria-label="정지한 코일에 가까워지고 멀어지는 자석"></canvas>
+          </div>
+
+          <div class="ind-readout">
+            <span>자석 위치 x: <b id="indMovePosReadout">0.0</b></span>
+            <span>유도 전류: <b id="indMoveCurrentReadout">0.00 A</b></span>
+            <span>이동 방향: <b id="indMoveDirReadout">정지</b></span>
+          </div>
+
+          <div class="ind-graph-wrap">
+            <p class="ind-graph-label">전류 – 시간 그래프</p>
+            <canvas id="indMoveGraphCanvas" class="ind-canvas ind-graph-canvas" width="640" height="120" aria-label="시간에 따른 유도 전류 그래프"></canvas>
+          </div>
+
+          <p class="ind-hint">Tip. 자석을 마우스(또는 손가락)로 직접 드래그해서 움직여볼 수도 있어요. 코일에 가까워질 때와 멀어질 때 전류의 방향이 반대가 되는 것을 확인해 보세요.</p>
         </div>
       </div>
     </div>
@@ -218,22 +238,37 @@
           </div>
         </div>
 
-        <!-- ② 움직이는 자석 컨트롤 (구현 예정 — 자리만 표시) -->
+        <!-- ② 움직이는 자석 컨트롤 (구현됨) -->
         <div id="indControlsMovingMagnet" style="display: none;">
           <div class="control-group">
-            <label>자석 속도 (예시)</label>
-            <div class="control-fake-slider"></div>
+            <div class="ind-slider-row">
+              <label for="indMoveSpeed" style="margin:0;">자석 이동 속도</label>
+              <span class="ind-value" id="indMoveSpeedValue">60/s</span>
+            </div>
+            <input type="range" id="indMoveSpeed" class="ind-slider" min="0" max="200" step="5" value="60">
           </div>
+
           <div class="control-group">
-            <label>자석-코일 거리 (예시)</label>
-            <div class="control-fake-slider"></div>
+            <div class="ind-slider-row">
+              <label for="indMoveStrength" style="margin:0;">자석 세기</label>
+              <span class="ind-value" id="indMoveStrengthValue">1.0×</span>
+            </div>
+            <input type="range" id="indMoveStrength" class="ind-slider" min="0.5" max="2" step="0.1" value="1">
           </div>
+
+          <div class="control-group">
+            <div class="ind-slider-row">
+              <label for="indMoveTurns" style="margin:0;">코일 감은 횟수 N</label>
+              <span class="ind-value" id="indMoveTurnsValue">5회</span>
+            </div>
+            <input type="range" id="indMoveTurns" class="ind-slider" min="1" max="20" step="1" value="5">
+          </div>
+
           <div class="control-group">
             <label>실행 제어</label>
             <div class="control-fake-buttons">
-              <button class="btn-mini" type="button">재생</button>
-              <button class="btn-mini" type="button">일시정지</button>
-              <button class="btn-mini" type="button">초기화</button>
+              <button class="btn-mini is-playing" type="button" id="indMovePlayBtn">일시정지</button>
+              <button class="btn-mini" type="button" id="indMoveResetBtn">초기화</button>
             </div>
           </div>
         </div>
@@ -257,7 +292,7 @@
       <div class="formula-placeholder">
         공통: ε = -dΦ/dt<br><br>
         ① 회전하는 코일: Φ = B·A·cos θ → ε = B·A·ω·sin θ<br>
-        ② 움직이는 자석: Φ = B(x)·A → ε = -A·(dB/dx)·(dx/dt)  (구현 예정)
+        ② 움직이는 자석: Φ = N·B(x)·A → ε = -N·A·(dB/dx)·v
       </div>
     </div>
   </section>
@@ -269,8 +304,7 @@
   <section class="wrap">
     <div class="dev-note">
       담당자 안내: 시각화 로직은 <code>../../assets/js/pages/induction.js</code>에 작성합니다.
-      ① 회전하는 코일 로직은 이미 구현되어 있고(<code>indRotate*</code> id 사용),
-      ② 움직이는 자석 로직을 이어서 구현하면 됩니다(<code>indMove*</code> id 사용 권장).
+      ① 회전하는 코일(<code>indRotate*</code> id)과 ② 움직이는 자석(<code>indMove*</code> id) 모두 구현되어 있습니다.
       상황 전환은 <code>#indModeSwitch</code>의 탭 버튼으로 이루어지며,
       <code>#indStageRotate</code> / <code>#indStageMovingMagnet</code>,
       <code>#indControlsRotate</code> / <code>#indControlsMovingMagnet</code>의 표시 여부를 전환합니다.
