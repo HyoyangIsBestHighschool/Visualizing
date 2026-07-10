@@ -12,7 +12,7 @@
 //   → 코일이 회전하지 않으면(ω = 0) 자기장 속에 있어도 전류는 0.
 //
 // [② 움직이는 자석] (구현됨)
-//   - #indStageMovingMagnet : 정지한 코일에 자석이 가까워지고 멀어지는 장면
+//   - #indStageMovingMagnet : 고정된 원형 코일(솔레노이드) 내부를 자석이 통과하는 장면
 //   - #indControlsMovingMagnet : 자석 이동 속도 / 자석 세기 / 코일 감은 횟수 컨트롤
 //   물리 모델(단순화, 쌍극자 자기장 근사):
 //     자기장   B(x) = 세기 / (1 + (x/k)²)^1.5   (x: 자석-코일 중심 거리, k: 감쇠 폭)
@@ -647,45 +647,37 @@ function initMovingMagnetScenario() {
     ctx.fillRect(toPx(0) - glowR, trackY - glowR, glowR * 2, glowR * 2);
     ctx.restore();
 
-    // --- 코일 (고정, 트랙 중앙) ---
-    const coilW = Math.max(30, w * 0.07);
-    const coilH = h * 0.34;
-    const coilX = centerX - coilW / 2;
-    const coilY = trackY - coilH / 2;
-
-    ctx.save();
-    ctx.fillStyle = colors.panelRaised;
-    ctx.strokeStyle = colors.border;
-    ctx.lineWidth = 1.5;
-    roundRect(ctx, coilX, coilY, coilW, coilH, 6);
-    ctx.fill();
-    ctx.stroke();
-
-    // 감은 횟수(N)를 시각적으로 표현 (최대 8개까지만 그려서 화면이 지저분해지지 않게 함)
-    const loopCount = Math.max(2, Math.min(8, Math.round(state.turns)));
-    ctx.strokeStyle = colors.physics;
-    ctx.lineWidth = 1.4;
-    ctx.globalAlpha = 0.85;
-    for (let i = 0; i < loopCount; i++) {
-      const ly = coilY + (coilH / (loopCount - 1 || 1)) * i;
-      ctx.beginPath();
-      ctx.ellipse(coilX + coilW / 2, ly, coilW / 2, 4, 0, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-    ctx.restore();
-
-    ctx.fillStyle = colors.inkMuted;
-    ctx.font = `600 11px ${colors.fontMono}, monospace`;
-    ctx.textAlign = 'center';
-    ctx.fillText(`N=${Math.round(state.turns)}`, coilX + coilW / 2, coilY + coilH + 16);
-
     // --- 자석 (이동) ---
-    const magnetW = Math.max(46, w * 0.11);
-    const magnetH = h * 0.18;
+    // 코일보다 먼저 크기를 정합니다: 코일 고리 반지름이 자석 두께보다 커야
+    // "자석이 고리 내부를 통과"하는 것처럼 보입니다.
+    const magnetW = Math.max(70, w * 0.16);
+    const magnetH = h * 0.14;
     const magnetX = toPx(state.pos) - magnetW / 2;
     const magnetY = trackY - magnetH / 2;
 
+    // --- 코일 (고정, 트랙 중앙 — 자석이 통과하는 솔레노이드) ---
+    const loopCount = Math.max(3, Math.min(10, Math.round(state.turns)));
+    const loopRy = magnetH / 2 + 12;       // 고리 반지름(세로) — 자석보다 넉넉하게
+    const loopRx = 7;                       // 고리 두께(가로, 옆에서 본 두께)
+    const coilSpan = Math.min(120, 16 * loopCount); // 고리들이 늘어선 전체 폭
+    const loopStep = loopCount > 1 ? coilSpan / (loopCount - 1) : 0;
+    const coilStartX = centerX - coilSpan / 2;
+    const loopXs = [];
+    for (let i = 0; i < loopCount; i++) loopXs.push(coilStartX + loopStep * i);
+
+    // 고리의 뒤쪽 절반(자석보다 먼저 그려서 "뒤에 가려지는" 느낌)
+    ctx.save();
+    ctx.strokeStyle = colors.physics;
+    ctx.lineWidth = 1.6;
+    ctx.globalAlpha = 0.9;
+    loopXs.forEach((lx) => {
+      ctx.beginPath();
+      ctx.ellipse(lx, trackY, loopRx, loopRy, 0, Math.PI, Math.PI * 2);
+      ctx.stroke();
+    });
+    ctx.restore();
+
+    // 자석 본체 (고리 뒤쪽 절반 다음, 앞쪽 절반보다는 먼저 그려서 통과하는 것처럼 보이게 함)
     ctx.save();
     ctx.fillStyle = colors.panelRaised;
     ctx.strokeStyle = colors.border;
@@ -695,21 +687,40 @@ function initMovingMagnetScenario() {
     ctx.stroke();
 
     // N극이 코일(오른쪽 이동 방향)을 향하도록 오른쪽 절반을 포인트 컬러로 표시
-    const capW = magnetW * 0.45;
+    const capW = magnetW * 0.4;
     ctx.fillStyle = colors.physics;
     roundRect(ctx, magnetX + magnetW - capW, magnetY, capW, magnetH, 6);
     ctx.fill();
 
     ctx.fillStyle = colors.ink;
-    ctx.font = `700 ${Math.max(11, magnetH * 0.45)}px ${colors.fontMono}, monospace`;
+    ctx.font = `700 ${Math.max(11, magnetH * 0.5)}px ${colors.fontMono}, monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('S', magnetX + magnetW * 0.27, magnetY + magnetH / 2);
+    ctx.fillText('S', magnetX + magnetW * 0.22, magnetY + magnetH / 2);
     ctx.fillStyle = '#06231f';
     ctx.fillText('N', magnetX + magnetW - capW / 2, magnetY + magnetH / 2);
     ctx.restore();
 
+    // 고리의 앞쪽 절반 (자석 위에 그려서 "자석이 고리 내부를 통과"하는 것처럼 보이게 함)
+    ctx.save();
+    ctx.strokeStyle = colors.physics;
+    ctx.lineWidth = 1.6;
+    loopXs.forEach((lx) => {
+      ctx.beginPath();
+      ctx.ellipse(lx, trackY, loopRx, loopRy, 0, 0, Math.PI);
+      ctx.stroke();
+    });
+    ctx.restore();
+
+    ctx.fillStyle = colors.inkMuted;
+    ctx.font = `600 11px ${colors.fontMono}, monospace`;
+    ctx.textAlign = 'center';
+    ctx.fillText(`N=${Math.round(state.turns)}(감은 횟수)`, centerX, trackY + loopRy + 22);
+
     // --- 코일 -> 전류계 도선 ---
+    const coilBottomY = trackY + loopRy;
+    const wireLeftX = loopXs[0];
+    const wireRightX = loopXs[loopXs.length - 1];
     const meterX = centerX;
     const meterY = h * 0.86;
     const meterR = Math.max(24, h * 0.11);
@@ -718,10 +729,10 @@ function initMovingMagnetScenario() {
     ctx.strokeStyle = colors.inkMuted;
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(coilX + 6, coilY + coilH);
-    ctx.bezierCurveTo(coilX + 6, coilY + coilH + 24, meterX - meterR * 0.7, meterY - meterR * 0.9, meterX - meterR * 0.6, meterY - meterR * 0.15);
-    ctx.moveTo(coilX + coilW - 6, coilY + coilH);
-    ctx.bezierCurveTo(coilX + coilW - 6, coilY + coilH + 24, meterX + meterR * 0.7, meterY - meterR * 0.9, meterX + meterR * 0.6, meterY - meterR * 0.15);
+    ctx.moveTo(wireLeftX, coilBottomY);
+    ctx.bezierCurveTo(wireLeftX, coilBottomY + 24, meterX - meterR * 0.7, meterY - meterR * 0.9, meterX - meterR * 0.6, meterY - meterR * 0.15);
+    ctx.moveTo(wireRightX, coilBottomY);
+    ctx.bezierCurveTo(wireRightX, coilBottomY + 24, meterX + meterR * 0.7, meterY - meterR * 0.9, meterX + meterR * 0.6, meterY - meterR * 0.15);
     ctx.stroke();
     ctx.restore();
 
