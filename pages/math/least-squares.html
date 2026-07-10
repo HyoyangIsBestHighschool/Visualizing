@@ -9,15 +9,7 @@
   /* 이 페이지 전용 보조 스타일 — style.css는 건드리지 않고,
      기존 CSS 변수(--accent-math, --panel, --border, --ink 등)만 재사용합니다. */
 
-  .ls-stage {
-    display: flex;
-    gap: 14px;
-    flex-wrap: wrap;
-  }
-
   .ls-canvas-box {
-    flex: 1 1 260px;
-    min-width: 240px;
     border: 1px dashed var(--border);
     border-radius: 8px;
     background:
@@ -27,18 +19,9 @@
     padding: 10px;
   }
 
-  .ls-canvas-title {
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    color: var(--ink-muted);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    margin: 0 0 8px;
-  }
-
   .ls-canvas-box canvas {
     width: 100%;
-    height: 220px;
+    height: 340px;
     display: block;
     border-radius: 6px;
   }
@@ -46,7 +29,7 @@
   .ls-readouts {
     display: grid;
     grid-template-columns: 1fr;
-    gap: 6px;
+    gap: 8px;
     font-family: var(--font-mono);
     font-size: 0.85rem;
     color: var(--ink);
@@ -54,7 +37,12 @@
     border: 1px solid var(--border);
     border-radius: 8px;
     padding: 12px 14px;
-    margin-bottom: 18px;
+    margin-bottom: 14px;
+    transition: border-color 0.2s ease;
+  }
+
+  .ls-readouts.is-close {
+    border-color: var(--accent-math);
   }
 
   .ls-readouts span.label {
@@ -64,6 +52,59 @@
 
   .ls-readouts span.eq {
     color: var(--accent-math);
+  }
+
+  #ls-ssr-value {
+    transition: color 0.2s ease;
+  }
+
+  #ls-ssr-value.is-close {
+    color: var(--accent-math);
+    font-weight: 600;
+  }
+
+  .ls-feedback {
+    font-family: var(--font-body);
+    font-size: 0.82rem;
+    color: var(--accent-math);
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    min-height: 1.1em;
+  }
+
+  .ls-feedback.show {
+    opacity: 1;
+  }
+
+  .ls-legend {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    color: var(--ink-muted);
+    margin: 10px 0 0;
+  }
+
+  .ls-legend span {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .ls-legend i {
+    display: inline-block;
+    width: 16px;
+    height: 2px;
+    background: var(--accent-math);
+  }
+
+  .ls-legend i.optimal {
+    background: repeating-linear-gradient(
+      90deg,
+      var(--accent-physics) 0 6px,
+      transparent 6px 10px
+    );
   }
 
   input[type="range"].ls-slider {
@@ -101,8 +142,8 @@
   }
 
   .btn-mini.is-active {
-    border-color: var(--accent-math);
-    color: var(--accent-math);
+    border-color: var(--accent-physics);
+    color: var(--accent-physics);
   }
 
   .ls-mission {
@@ -151,7 +192,7 @@
   <section class="wrap sim-header">
     <p class="eyebrow">MATH</p>
     <h1>최소제곱법</h1>
-    <p class="desc">흩어진 데이터 점들에 가장 가까운 직선을 찾는 방법을 시각화합니다. 직선을 움직여보면서 각 점까지의 오차(잔차)와, 그 제곱의 합이 어떻게 변하는지 확인해 보세요.</p>
+    <p class="desc">흩어진 데이터 점들에 가장 가까운 직선을 찾는 방법을 시각화합니다. 직선을 직접 움직여보면서 각 점까지의 오차(잔차)와, 그 제곱의 합이 어떻게 변하는지 확인해 보세요.</p>
     <div class="status-row">
       <span class="badge badge-open">구현됨</span>
       <span class="badge">담당자: 미배정</span>
@@ -164,18 +205,15 @@
 
       <div class="ls-readouts" id="ls-readout">
         <div><span class="label">직선의 방정식</span><span class="eq" id="ls-eq">y = 1.00x + 0.00</span></div>
-        <div><span class="label">오차 제곱합 (RSS)</span><span id="ls-rss">0.00</span></div>
-        <div><span class="label">오차 곡선의 접선 기울기 (dRSS/da)</span><span id="ls-deriv">0.00</span></div>
+        <div><span class="label">잔차 제곱합 (SSR)</span><span id="ls-ssr-value">0.00</span></div>
+        <div class="ls-feedback" id="ls-feedback">정답에 가까워졌습니다!</div>
       </div>
 
-      <div class="ls-stage" id="sim-stage">
-        <div class="ls-canvas-box">
-          <p class="ls-canvas-title">데이터 평면 · y = ax + b</p>
-          <canvas id="ls-data-canvas"></canvas>
-        </div>
-        <div class="ls-canvas-box">
-          <p class="ls-canvas-title">오차 곡선 평면 · RSS(a)</p>
-          <canvas id="ls-curve-canvas"></canvas>
+      <div class="ls-canvas-box" id="sim-stage">
+        <canvas id="ls-canvas"></canvas>
+        <div class="ls-legend">
+          <span><i></i> 내가 움직이는 직선</span>
+          <span><i class="optimal"></i> 최소제곱법 정답선</span>
         </div>
       </div>
     </div>
@@ -184,7 +222,7 @@
       <p class="panel-label">컨트롤 패널 · #sim-controls</p>
       <div id="sim-controls">
         <div class="control-group">
-          <label for="ls-slope">기울기 a <span class="ls-value" id="ls-slope-value">1.00</span></label>
+          <label for="ls-slope">기울기 m <span class="ls-value" id="ls-slope-value">1.00</span></label>
           <input type="range" class="ls-slider" id="ls-slope" min="-1" max="3" step="0.01" value="1">
         </div>
         <div class="control-group">
@@ -195,7 +233,7 @@
           <label>실행 제어</label>
           <div class="control-fake-buttons">
             <button class="btn-mini" type="button" id="ls-btn-regen">데이터 새로 생성</button>
-            <button class="btn-mini" type="button" id="ls-btn-optimize">최적 직선 찾기</button>
+            <button class="btn-mini" type="button" id="ls-btn-optimal">선형회귀 정답선 보기</button>
             <button class="btn-mini" type="button" id="ls-btn-reset">초기화</button>
           </div>
         </div>
@@ -208,33 +246,34 @@
       <h3>개념 설명</h3>
       <p>
         최소제곱법(least squares method)은 흩어진 데이터 점들을 가장 잘 설명하는 직선
-        <code>y = ax + b</code>를 찾는 방법입니다. 각 데이터 점 <code>(xᵢ, yᵢ)</code>와
-        직선 사이의 세로 거리를 <strong>잔차(residual)</strong>라고 하며, 이 잔차를 제곱해서
-        모두 더한 값을 <strong>오차 제곱합(RSS, Residual Sum of Squares)</strong>이라고 부릅니다.
-        RSS가 가장 작아지는 a, b를 찾는 것이 곧 데이터에 가장 잘 맞는 직선을 찾는 것과 같습니다.
+        <code>y = mx + b</code>를 찾는 방법입니다. 각 데이터 점(실제값)에서 직선(예측값)까지
+        수직으로 이어지는 점선이 <strong>잔차(residual)</strong>이며, 이 잔차를 제곱해서 모두
+        더한 값이 <strong>잔차 제곱합(SSR, Sum of Squared Residuals)</strong>입니다. SSR이
+        작을수록 직선이 데이터를 더 잘 설명한다는 뜻입니다.
       </p>
       <p style="margin-top: 10px;">
-        오른쪽 오차 곡선 평면은 절편 b를 현재 값으로 고정했을 때, 기울기 a를 바꿔가며
-        RSS(a)가 어떻게 변하는지를 보여주는 아래로 볼록한 2차 곡선입니다. 점 P는 지금 슬라이더로
-        설정한 a에서의 RSS 값이며, 접선의 기울기는 그 지점에서의 미분값(dRSS/da)입니다.
+        슬라이더로 직선을 직접 움직여 SSR을 최소로 만들어 보세요. 값이 최적값에 가까워지면
+        SSR 숫자와 패널 테두리 색이 강조되고 "정답에 가까워졌습니다!" 메시지가 나타납니다.
+        '선형회귀 정답선 보기' 버튼을 누르면 컴퓨터가 최소제곱법 공식으로 계산한 진짜
+        최적의 회귀선이 점선으로 겹쳐 나타나, 내가 맞춘 직선과 직접 비교할 수 있습니다.
       </p>
       <p style="margin-top: 10px;"><strong>탐구 미션</strong></p>
       <ol class="ls-mission">
-        <li>슬라이더를 수동으로 움직여 오차 제곱합(RSS)을 가장 작게 만들어 보세요. 왼쪽 정사각형들이 어떻게 변하나요?</li>
-        <li>'최적 직선 찾기' 버튼을 눌렀을 때, 오른쪽 오차 곡선의 접선 기울기가 왜 정확히 0이 되는지 미분의 개념과 연결해 생각해 보세요.</li>
-        <li>절편 b를 먼저 크게 바꾼 뒤 다시 최적화를 실행해 보세요. 최적 기울기 a가 b와 무관하게 항상 같은 값으로 수렴하나요?</li>
+        <li>슬라이더만으로 SSR을 최대한 작게 만들어 보세요. "정답에 가까워졌습니다!" 메시지가 뜨나요?</li>
+        <li>'선형회귀 정답선 보기'를 눌러 내가 만든 직선과 컴퓨터의 정답선을 비교해 보세요. 얼마나 가까웠나요?</li>
+        <li>일부러 직선을 데이터에서 멀리 떨어뜨려 보세요. 잔차 점선과 SSR 숫자가 어떻게 달라지나요?</li>
       </ol>
     </div>
     <div class="panel">
       <h3>관련 수식</h3>
       <div class="formula-placeholder">
-        오차 제곱합:<br>
-        S(a, b) = Σ (yᵢ − (a·xᵢ + b))²<br><br>
-        접선의 기울기(미분):<br>
-        ∂S/∂a = −2 Σ xᵢ (yᵢ − (a·xᵢ + b))<br><br>
+        잔차(residual):<br>
+        eᵢ = yᵢ − (m·xᵢ + b)<br><br>
+        잔차 제곱합(SSR):<br>
+        S(m, b) = Σ (yᵢ − (m·xᵢ + b))²<br><br>
         최적해(닫힌 형태 해):<br>
-        a* = Σ(xᵢ − x̄)(yᵢ − ȳ) / Σ(xᵢ − x̄)²<br>
-        b* = ȳ − a*·x̄
+        m* = Σ(xᵢ − x̄)(yᵢ − ȳ) / Σ(xᵢ − x̄)²<br>
+        b* = ȳ − m*·x̄
       </div>
     </div>
   </section>
