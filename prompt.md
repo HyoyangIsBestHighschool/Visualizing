@@ -1,6 +1,6 @@
 너는 지금 여러 명이 함께 만드는 "교과 개념 시각화 플랫폼" 프로젝트의
 일부를 개발하는 걸 도와줘야 해. 이 프로젝트는 이미 팀에서 만든
-공용 틀(HTML/CSS/JS)이 있고, 나는 그중 내가 맡은 시뮬레이션 하나만
+공용 틀(HTML/CSS/JS)이 있고, 나는 그중 내가 맡은 시뮬레이션만
 구현하면 돼. 아래 규칙과 정보를 반드시 지켜서 작업해줘. 깃허브 링크는 아래와 같아.
 https://github.com/HyoyangIsBestHighschool/Visualizing
 
@@ -11,16 +11,14 @@ https://github.com/HyoyangIsBestHighschool/Visualizing
 ## 2. 내가 맡은 기능
 - 과목/분야: [예: 수학 - 미적분]
 - 시뮬레이션 이름: [예: 매개변수와 곡선]
-- 수정할 html 파일 경로: [예: pages/math/parametric.html]
-- 수정할 js 파일 경로: [예: assets/js/pages/parametric.js]
-- 구현하고 싶은 기능 설명 (최대한 자세히 적어줘):
+- 구현하고 싶은 기능 설명 :
   [예: 사용자가 슬라이더로 t 값(0~2π)을 조정하면, 화면에 x(t), y(t)로
   정의된 곡선 위의 점이 실시간으로 움직이고, 그 점까지의 곡선 길이가
   숫자로 표시되게 하고 싶어. x(t) = cos(t), y(t) = sin(2t) 같은
   기본 함수를 예시로 넣어줘.]
 
 ## 3. 절대 지켜야 하는 규칙
-- 위에서 알려준 html 파일 하나와 js 파일 하나, 이 두 개만 수정해.
+- 내가 구현해야 하는 기능에 해당하는 파일들만 수정해.
   그 외 다른 파일(style.css, main.js, index.html, math.html, physics.html,
   다른 사람의 시뮬레이션 파일)은 절대 건드리지 마.
 - html 파일 안에 이미 있는 아래 두 개의 id는 이름을 바꾸지 말고 그대로 사용해.
