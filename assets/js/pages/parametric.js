@@ -22,36 +22,51 @@ document.addEventListener('DOMContentLoaded', () => {
   // ------------------------------------------------------------
   // 1. 후보 함수 정의 (라벨, 계산식, 도함수, 정의역 체크)
   // ------------------------------------------------------------
+  const LN10 = Math.log(10);
+  const LN2 = Math.log(2);
+
   const FUNCTIONS = {
     linear: {
       label: 'f(t) = t',
       f: (t) => t,
       df: (t) => 1,
+      minT: 0,
     },
     quadratic: {
-      label: 'f(t) = t² − 2t',
-      f: (t) => t * t - 2 * t,
-      df: (t) => 2 * t - 2,
+      label: 'f(t) = t²',
+      f: (t) => t * t,
+      df: (t) => 2 * t,
+      minT: 0,
     },
     cos: {
       label: 'f(t) = cos(t)',
       f: (t) => Math.cos(t),
       df: (t) => -Math.sin(t),
+      minT: 0,
     },
-    sin2t: {
-      label: 'f(t) = sin(2t)',
-      f: (t) => Math.sin(2 * t),
-      df: (t) => 2 * Math.cos(2 * t),
+    sin: {
+      label: 'f(t) = sin(t)',
+      f: (t) => Math.sin(t),
+      df: (t) => Math.cos(t),
+      minT: 0,
     },
-    exp: {
-      label: 'f(t) = e^(0.5t)',
-      f: (t) => Math.exp(0.5 * t),
-      df: (t) => 0.5 * Math.exp(0.5 * t),
+    exp2: {
+      label: 'f(t) = 2^t',
+      f: (t) => Math.pow(2, t),
+      df: (t) => Math.pow(2, t) * LN2,
+      minT: 0,
     },
     ln: {
-      label: 'f(t) = ln(t + 1)',
-      f: (t) => (t > -1 ? Math.log(t + 1) : NaN),
-      df: (t) => (t > -1 ? 1 / (t + 1) : NaN),
+      label: 'f(t) = ln(t)',
+      f: (t) => (t > 0 ? Math.log(t) : NaN),
+      df: (t) => (t > 0 ? 1 / t : NaN),
+      minT: 0.1, // t=0에서 정의되지 않으므로 슬라이더 최소값을 0.1로 제한
+    },
+    log10: {
+      label: 'f(t) = log(t)',
+      f: (t) => (t > 0 ? Math.log10(t) : NaN),
+      df: (t) => (t > 0 ? 1 / (t * LN10) : NaN),
+      minT: 0.1, // t=0에서 정의되지 않으므로 슬라이더 최소값을 0.1로 제한
     },
   };
   const FN_KEYS = Object.keys(FUNCTIONS);
@@ -67,6 +82,9 @@ document.addEventListener('DOMContentLoaded', () => {
   const selY = document.getElementById('pc-fn-y');
   const tSlider = document.getElementById('pc-t-slider');
   const tValueLabel = document.getElementById('pc-t-value');
+  const tMinLabel = document.getElementById('pc-t-min-label');
+  const tMaxLabel = document.getElementById('pc-t-max-label');
+  const domainNote = document.getElementById('pc-domain-note');
   const readout = document.getElementById('pc-readout');
   const btnPlay = document.getElementById('pc-btn-play');
   const btnPause = document.getElementById('pc-btn-pause');
@@ -87,7 +105,7 @@ document.addEventListener('DOMContentLoaded', () => {
     selY.appendChild(optY);
   });
   selX.value = 'cos';
-  selY.value = 'sin2t';
+  selY.value = 'sin';
 
   // ------------------------------------------------------------
   // 3. 상태
@@ -104,15 +122,37 @@ document.addEventListener('DOMContentLoaded', () => {
     return { fx: FUNCTIONS[selX.value], fy: FUNCTIONS[selY.value] };
   }
 
+  // 선택된 함수 조합의 정의역을 보고 t의 안전한 최소값을 계산합니다.
+  // (예: ln(t), log(t)가 하나라도 선택되면 0.1부터 시작하도록 제한)
+  function effectiveMinT() {
+    const { fx, fy } = currentFns();
+    return Math.max(fx.minT || 0, fy.minT || 0);
+  }
+
+  // 함수가 바뀔 때마다 슬라이더의 min을 다시 맞추고, 필요하면 t를 그 안으로 당깁니다.
+  function syncSliderDomain() {
+    const minT = effectiveMinT();
+    tSlider.min = String(minT);
+    if (tMinLabel) tMinLabel.textContent = minT > 0 ? minT.toFixed(1) : '0';
+    if (tMaxLabel) tMaxLabel.textContent = '2π';
+    if (domainNote) domainNote.hidden = minT <= 0;
+    if (t < minT) {
+      t = minT;
+      tSlider.value = String(t);
+      tValueLabel.textContent = `t = ${t.toFixed(3)}`;
+    }
+  }
+
   // ------------------------------------------------------------
   // 4. 좌표 범위 계산 (함수 조합이 바뀔 때만 다시 계산)
   // ------------------------------------------------------------
   function recomputeBounds() {
     const { fx, fy } = currentFns();
+    const minT = effectiveMinT();
     const N = 400;
     let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
     for (let i = 0; i <= N; i++) {
-      const ti = (i / N) * T_MAX;
+      const ti = minT + (i / N) * (T_MAX - minT);
       const x = fx.f(ti);
       const y = fy.f(ti);
       if (Number.isFinite(x) && Number.isFinite(y)) {
@@ -220,8 +260,9 @@ document.addEventListener('DOMContentLoaded', () => {
     ctx.beginPath();
     let started = false;
     const N = 500;
+    const minTDraw = effectiveMinT();
     for (let i = 0; i <= N; i++) {
-      const ti = (i / N) * T_MAX;
+      const ti = minTDraw + (i / N) * (T_MAX - minTDraw);
       const x = fx.f(ti), y = fy.f(ti);
       if (!Number.isFinite(x) || !Number.isFinite(y)) { started = false; continue; }
       const p = toPx(x, y);
@@ -340,6 +381,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 8. 이벤트 연결
   // ------------------------------------------------------------
   function onFnChange() {
+    syncSliderDomain();
     recomputeBounds();
     const rect = stage.getBoundingClientRect();
     updateProjection(rect.width, rect.height);
@@ -363,9 +405,9 @@ document.addEventListener('DOMContentLoaded', () => {
   btnPause.addEventListener('click', () => { playing = false; });
   btnReset.addEventListener('click', () => {
     playing = false;
-    t = 0;
-    tSlider.value = '0';
-    tValueLabel.textContent = 't = 0.000';
+    t = effectiveMinT();
+    tSlider.value = String(t);
+    tValueLabel.textContent = `t = ${t.toFixed(3)}`;
     draw();
   });
 
@@ -374,8 +416,10 @@ document.addEventListener('DOMContentLoaded', () => {
     if (lastFrameTime == null) lastFrameTime = now;
     const dt = (now - lastFrameTime) / 1000;
     lastFrameTime = now;
+    const minT = effectiveMinT();
     t += dt * T_PER_SECOND;
-    if (t > T_MAX) t -= T_MAX;
+    if (t > T_MAX) t = minT + (t - T_MAX);
+    if (t < minT) t = minT;
     tSlider.value = String(t);
     tValueLabel.textContent = `t = ${t.toFixed(3)}`;
     draw();
@@ -390,6 +434,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // ------------------------------------------------------------
   // 9. 초기화
   // ------------------------------------------------------------
+  syncSliderDomain();
   recomputeBounds();
   resizeCanvas();
 });
