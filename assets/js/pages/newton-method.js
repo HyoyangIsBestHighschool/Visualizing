@@ -215,6 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const N = 400;
     const samplesF = [];
     const samplesApprox = [];
+    let _cached = null; // ← for문 안에서 getBaseCoeffs()가 참조하므로, 반드시 for문보다 먼저 선언되어야 함
     for (let i = 0; i <= N; i++) {
       const xi = xMin + ((xMax - xMin) * i) / N;
       const yiF = safeEval(f, xi);
@@ -238,7 +239,6 @@ document.addEventListener('DOMContentLoaded', () => {
       const c = getBaseCoeffs();
       return c[0] + c[1] * dxp + (c[2] / 2) * dxp * dxp + (c[3] / 6) * dxp * dxp * dxp;
     }
-    let _cached = null;
     function getBaseCoeffs() {
       if (_cached) return _cached;
       _cached = [f(a), d1(f, a), d2(f, a), d3(f, a)];
